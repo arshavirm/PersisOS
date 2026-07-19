@@ -1,0 +1,63 @@
+#!/bin/bash
+set -e
+
+export DEBIAN_FRONTEND=noninteractive
+
+echo "deb http://deb.debian.org/debian stable main contrib non-free non-free-firmware" > /etc/apt/sources.list
+
+apt update
+
+apt install -y \
+    linux-image-amd64 \
+    live-boot \
+    live-config \
+    live-config-systemd \
+    systemd-sysv \
+    grub-pc \
+    sudo \
+    network-manager \
+    xfce4 \
+    lightdm \
+    lightdm-gtk-greeter \
+    xfce4-goodies \
+    xorg \
+    locales \
+    dialog \
+    wget \
+    curl \
+    nano \
+    vim \
+    git \
+    bash-completion \
+    plymouth \
+    dbus \
+    avahi-daemon \
+    pulseaudio \
+    pavucontrol \
+    firefox-esr 
+
+echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+locale-gen
+update-locale LANG=en_US.UTF-8
+
+echo "PersisOS" > /etc/hostname
+
+cat > /etc/hosts <<EOF
+127.0.0.1 localhost
+127.0.1.1 PersisOS
+EOF
+
+useradd -m -G sudo -s /bin/bash user
+echo "user:user" | chpasswd
+
+echo "root:root" | chpasswd
+
+systemctl enable NetworkManager
+systemctl enable lightdm
+
+apt clean
+
+rm -rf /var/lib/apt/lists/*
+
+xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitor0/image-path --set /usr/share/backgrounds/persisos/background_1.png
+xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitor0/last-image --set /usr/share/backgrounds/persisos/background_1.png
