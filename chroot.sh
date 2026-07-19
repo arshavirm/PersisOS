@@ -60,5 +60,7 @@ apt clean
 
 rm -rf /var/lib/apt/lists/*
 
+export DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$UID/bus
+
 xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitor0/image-path --set /usr/share/backgrounds/persisos/background_1.png
 xfconf-query --channel xfce4-desktop --property /backdrop/screen0/monitor0/last-image --set /usr/share/backgrounds/persisos/background_1.png
