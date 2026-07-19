@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Environment
-        run: sudo apt install debootstrap mksquashfs-tools grub2-common xorriso
+        run: sudo apt install debootstrap squashfs-tools grub2-common xorriso
 
       - name: Build Process
         run: |
