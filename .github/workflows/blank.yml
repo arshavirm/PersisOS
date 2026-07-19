@@ -25,3 +25,10 @@ jobs:
           sudo ./make-live.sh
           sudo ./make-iso.sh
           ls output -lh         
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: persisos-amd64
+          path: output/*.iso
+          compression-level: 0
+          retention-days: 30
