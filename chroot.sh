@@ -48,6 +48,13 @@ cat > /etc/hosts <<EOF
 127.0.1.1 PersisOS
 EOF
 
+sudo mkdir -p etc/xdg/xfce4/xfconf/xfce-perchannel-xml/
+sudo cp /persisos_temp/xfce4-desktop.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+
+sudo mkdir -p /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/
+sudo cp /persisos_temp/xfce4-desktop.xml /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+
+
 useradd -m -G sudo -s /bin/bash user
 echo "user:user" | chpasswd
 
@@ -59,3 +66,5 @@ systemctl enable lightdm
 apt clean
 
 rm -rf /var/lib/apt/lists/*
+
+rm -rd /persisos_temp

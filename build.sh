@@ -30,11 +30,9 @@ echo "[3/6] Copying files and setup script..."
 sudo mkdir -p $ROOTFS/usr/share/backgrounds/persisos/
 sudo cp background_1.png $ROOTFS/usr/share/backgrounds/persisos/background_1.png
 
-sudo mkdir -p $ROOTFS/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/
-sudo cp xfce4-desktop.xml $ROOTFS/etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+sudo mkdir -p $ROOTFS/persisos_temp
+sudo cp xfce4-desktop.xml $ROOTFS/persisos_temp/xfce4-desktop.xml
 
-sudo mkdir -p $ROOTFS/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/
-sudo cp xfce4-desktop.xml $ROOTFS/etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
 
 sudo cp chroot.sh $ROOTFS/root/
 
