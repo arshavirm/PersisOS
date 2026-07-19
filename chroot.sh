@@ -34,7 +34,8 @@ apt install -y \
     avahi-daemon \
     pulseaudio \
     pavucontrol \
-    firefox-esr 
+    firefox-esr \
+    dbus-x11
 
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
