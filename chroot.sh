@@ -48,11 +48,11 @@ cat > /etc/hosts <<EOF
 127.0.1.1 PersisOS
 EOF
 
-sudo mkdir -p etc/xdg/xfce4/xfconf/xfce-perchannel-xml/
-sudo cp /persisos_temp/xfce4-desktop.xml /etc/xdg/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+sudo mkdir -p /etc/xdg/xfce4
+sudo cp -r /persisos_temp/xfce4 /etc/xdg/xfce4
 
-sudo mkdir -p /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/
-sudo cp /persisos_temp/xfce4-desktop.xml /etc/skel/.config/xfce4/xfconf/xfce-perchannel-xml/xfce4-desktop.xml
+sudo mkdir -p /etc/skel/.config/xfce4
+sudo cp -r /persisos_temp/xfce4 /etc/skel/.config/xfce4
 
 
 useradd -m -G sudo -s /bin/bash user
