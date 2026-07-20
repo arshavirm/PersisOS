@@ -51,8 +51,8 @@ EOF
 sudo mkdir -p /etc/xdg/xfce4
 sudo cp -r /persisos_temp/xfce4 /etc/xdg/xfce4
 
-sudo mkdir -p /etc/skel/.config/xfce4
-sudo cp -r /persisos_temp/xfce4 /etc/skel/.config/xfce4
+sudo mkdir -p /etc/skel/.config
+sudo cp -r /persisos_temp/xfce4 /etc/skel/.config
 
 
 useradd -m -G sudo -s /bin/bash user
