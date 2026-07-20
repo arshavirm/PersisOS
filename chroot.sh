@@ -26,8 +26,6 @@ apt install -y \
     wget \
     curl \
     nano \
-    vim \
-    git \
     bash-completion \
     plymouth \
     dbus \
