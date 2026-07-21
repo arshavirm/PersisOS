@@ -29,7 +29,7 @@
   </property>
   <property name="plugins" type="empty">
     <property name="plugin-1" type="string" value="applicationsmenu">
-      <property name="button-icon" type="string" value="/usr/share/backgrounds/persisos/persisos.svg"/>
+      <property name="button-icon" type="string" value="/usr/share/pixmaps/persisos/persisos.svg"/>
       <property name="show-button-title" type="bool" value="true"/>
       <property name="show-menu-icons" type="bool" value="true"/>
     </property>

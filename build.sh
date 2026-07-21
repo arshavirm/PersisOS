@@ -28,12 +28,13 @@ sudo mount -t tmpfs tmpfs $ROOTFS/run
 echo "[3/6] Copying files and setup script..."
 
 sudo mkdir -p $ROOTFS/usr/share/backgrounds/persisos/
-sudo cp background_1.png $ROOTFS/usr/share/backgrounds/persisos/background_1.png
-sudo cp persisos.svg $ROOTFS/usr/share/backgrounds/persisos/persisos.svg
+sudo cp assets/background_1.png $ROOTFS/usr/share/backgrounds/persisos/background_1.png
+sudo cp persisos.svg $ROOTFS/usr/share/pixmaps/persisos/persisos.svg
 
 
 sudo mkdir -p $ROOTFS/persisos_temp
-sudo cp -r xfce4 $ROOTFS/persisos_temp/xfce4
+sudo cp -r assets/xfce4 $ROOTFS/persisos_temp/xfce4
+sudo cp assets/.face $ROOTFS/persisos_temp/.face
 
 sudo cp chroot.sh $ROOTFS/root/
 

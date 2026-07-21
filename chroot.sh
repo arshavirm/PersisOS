@@ -52,6 +52,11 @@ sudo cp -r /persisos_temp/xfce4 /etc/xdg/xfce4
 sudo mkdir -p /etc/skel/.config
 sudo cp -r /persisos_temp/xfce4 /etc/skel/.config
 
+sudo mkdir -p /root/.config
+sudo cp -r /persisos_temp/xfce4 /root/.config
+
+sudo cp /persisos_temp/.face /etc/skel/.face
+sudo cp /persisos_temp/.face /root/.face
 
 useradd -m -G sudo -s /bin/bash user
 echo "user:user" | chpasswd
