@@ -33,10 +33,12 @@ sudo cp assets/background_1.png $ROOTFS/usr/share/backgrounds/persisos/backgroun
 sudo mkdir -p $ROOTFS/usr/share/pixmaps/persisos
 sudo cp persisos.svg $ROOTFS/usr/share/pixmaps/persisos/persisos.svg
 
+sudo cp assets/os-release $ROOTFS/etc/os-release
 
 sudo mkdir -p $ROOTFS/persisos_temp
 sudo cp -r assets/xfce4 $ROOTFS/persisos_temp/xfce4
 sudo cp assets/.face $ROOTFS/persisos_temp/.face
+sudo cp assets/lightdm-gtk-greeter.conf $ROOTFS/persisos_temp/lightdm-gtk-greeter.conf
 
 sudo cp chroot.sh $ROOTFS/root/
 

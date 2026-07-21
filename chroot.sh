@@ -33,7 +33,9 @@ apt install -y \
     pulseaudio \
     pavucontrol \
     firefox-esr \
-    dbus-x11
+    dbus-x11 \
+    calamares \
+    calamares-settings-debian
 
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
@@ -57,6 +59,8 @@ sudo cp -r /persisos_temp/xfce4 /root/.config
 
 sudo cp /persisos_temp/.face /etc/skel/.face
 sudo cp /persisos_temp/.face /root/.face
+
+sudo cp /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
 
 useradd -m -G sudo -s /bin/bash user
 echo "user:user" | chpasswd
