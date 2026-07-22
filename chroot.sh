@@ -63,8 +63,8 @@ sudo mkdir -p /etc/calamares/
 sudo cp -r /persisos_temp/calamares/persisos /etc/calamares/
 sudo cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
 
-sudo cp /persisos_temp/calamares-install-persisos.desktop /root/Desktop/calamares-install-persisos.desktop
-sudo cp /persisos_temp/calamares-install-persisos.desktop /etc/skel/Desktop/calamares-install-persisos.desktop
+#sudo cp /persisos_temp/calamares-install-persisos.desktop /root/Desktop/calamares-install-persisos.desktop
+#sudo cp /persisos_temp/calamares-install-persisos.desktop /etc/skel/Desktop/calamares-install-persisos.desktop
 
 sudo mkdir -p /boot/grub/
 sudo cp -r /persisos_temp/grub.cfg /boot/grub/grub.cfg
