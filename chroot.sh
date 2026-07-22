@@ -59,6 +59,12 @@ sudo cp -r /persisos_temp/xfce4 /etc/skel/.config
 sudo mkdir -p /root/.config
 sudo cp -r /persisos_temp/xfce4 /root/.config
 
+sudo mkdir -p /etc/calamares/
+sudo cp -r /persisos_temp/calamares/persisos /etc/calamares/
+
+sudo mkdir -p /boot/grub/
+sudo cp -r /persisos_temp/grub.cfg /boot/grub/grub.cfg
+
 sudo cp /persisos_temp/.face /etc/skel/.face
 sudo cp /persisos_temp/.face /root/.face
 
