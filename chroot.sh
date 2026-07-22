@@ -8,6 +8,7 @@ echo "deb http://deb.debian.org/debian stable main contrib non-free non-free-fir
 apt update
 
 apt install -y \
+    firmware-linux \
     linux-image-amd64 \
     live-boot \
     live-config \

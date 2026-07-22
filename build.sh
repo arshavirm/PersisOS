@@ -29,6 +29,7 @@ echo "[3/6] Copying files and setup script..."
 
 sudo mkdir -p $ROOTFS/usr/share/backgrounds/persisos/
 sudo cp assets/background_1.png $ROOTFS/usr/share/backgrounds/persisos/background_1.png
+sudo cp assets/background_2.png $ROOTFS/usr/share/backgrounds/persisos/background_2.png
 
 sudo mkdir -p $ROOTFS/usr/share/pixmaps/persisos
 sudo cp persisos.svg $ROOTFS/usr/share/pixmaps/persisos/persisos.svg
