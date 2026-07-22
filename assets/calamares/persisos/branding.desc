@@ -14,9 +14,11 @@ images:
     productIcon: "logo.png"
 
 style:
-    sidebarBackground: "#202530"
+    sidebarBackground: "#673394"
     sidebarText: "#ffffff"
     sidebarTextSelect: "#ffffff"
     sidebarTextHighlight: "#ba6cff"
 
 slideshow: []
+
+bootloaderEntryName: "PersisOS GNU/Linux"
