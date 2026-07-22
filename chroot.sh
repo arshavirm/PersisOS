@@ -59,8 +59,8 @@ sudo cp -r /persisos_temp/xfce4 /etc/skel/.config
 sudo mkdir -p /root/.config
 sudo cp -r /persisos_temp/xfce4 /root/.config
 
-sudo mkdir -p /etc/calamares/
-sudo cp -r /persisos_temp/calamares/persisos /etc/calamares/
+sudo mkdir -p /etc/calamares/branding
+sudo cp -r /persisos_temp/calamares/persisos /etc/calamares/branding/persisos
 sudo cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
 
 #sudo cp /persisos_temp/calamares-install-persisos.desktop /root/Desktop/calamares-install-persisos.desktop
