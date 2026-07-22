@@ -34,6 +34,7 @@ apt install -y \
     pulseaudio \
     pavucontrol \
     firefox-esr \
+    vlc \
     dbus-x11 \
     calamares \
     calamares-settings-debian
@@ -72,6 +73,8 @@ systemctl enable NetworkManager
 systemctl enable lightdm
 
 apt clean
+
+sudo update-initramfs -u -k all
 
 rm -rf /var/lib/apt/lists/*
 
