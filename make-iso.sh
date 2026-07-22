@@ -20,6 +20,7 @@ echo "Copying live system..."
 cp live/live/filesystem.squashfs "$WORK/live/"
 cp live/vmlinuz "$WORK/live/"
 cp live/initrd "$WORK/live/"
+cp assets/grub.cfg $WORK/boot/grub/grub.cfg
 
 echo "Creating EFI image..."
 
@@ -37,7 +38,7 @@ sudo grub-mkstandalone \
     -O x86_64-efi \
     --modules="part_gpt part_msdos fat iso9660 normal linux configfile search search_fs_file search_label search_fs_uuid efi_gop efi_uga gfxterm all_video font" \
     --output=BOOTX64.EFI \
-    "boot/grub/grub.cfg=./assets/grub.cfg"
+    "boot/grub/grub.cfg=$WORK/boot/grub/grub.cfg"
 
 sudo cp BOOTX64.EFI efimount/EFI/BOOT/
 
