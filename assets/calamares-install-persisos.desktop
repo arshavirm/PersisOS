@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Install PersisOS
+GenericName=Calamares Installer
+Exec=calamares-install-debian
+Comment=PersisOS Installer
+Keywords=calamares;system;install;debian;installer
+Icon=/usr/share/pixmaps/persisos/persisos.svg
+Terminal=false
+Categories=Qt;System;
+StartupWMClass=calamares
+StartupNotify=false
+Path=
