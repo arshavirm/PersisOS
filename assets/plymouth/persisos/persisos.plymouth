@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=PersisOS
+Description=PersisOS Spinner Theme
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/persisos
+ScriptFile=/usr/share/plymouth/themes/persisos/persisos.script

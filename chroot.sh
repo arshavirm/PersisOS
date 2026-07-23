@@ -67,6 +67,9 @@ sudo cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/package
 sudo rm /usr/share/applications/calamares-install-debian.desktop
 sudo cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 
+sudo cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/
+sudo plymouth-set-default-theme persisos
+
 sudo mkdir -p /boot/grub/
 sudo cp -r /persisos_temp/grub.cfg /boot/grub/grub.cfg
 

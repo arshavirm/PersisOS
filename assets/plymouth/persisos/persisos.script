@@ -1,0 +1,29 @@
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+logo_image = Image("logo.png");
+logo = Sprite(logo_image);
+
+screen_w = Window.GetWidth();
+screen_h = Window.GetHeight();
+
+logo_x = (screen_w - logo_image.GetWidth()) / 2;
+logo_y = (screen_h - logo_image.GetHeight()) / 2;
+
+logo.SetPosition(logo_x, logo_y, 100);
+
+angle = 0;
+
+fun refresh_callback()
+{
+    global angle;
+
+    logo.SetRotation(angle);
+
+    angle += 4;
+
+    if (angle >= 360)
+        angle -= 360;
+}
+
+Plymouth.SetRefreshFunction(refresh_callback);
