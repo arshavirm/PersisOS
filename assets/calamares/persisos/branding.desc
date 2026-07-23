@@ -8,17 +8,11 @@ strings:
     shortProductName: PersisOS
     version: 1.0
     shortVersion: "1.0"
+    bootloaderEntryName: "PersisOS GNU/Linux"
 
 images:
     productLogo: "logo.png"
     productIcon: "logo.png"
 
-style:
-    sidebarBackground: "#673394"
-    sidebarText: "#ffffff"
-    sidebarTextSelect: "#ffffff"
-    sidebarTextHighlight: "#ba6cff"
 
 slideshow: []
-
-bootloaderEntryName: "PersisOS GNU/Linux"
