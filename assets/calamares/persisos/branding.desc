@@ -18,7 +18,7 @@ images:
 style:
     sidebarBackground: "#565656"
     sidebarText: "#ffffff"
-    sidebarTextSelect: "#ffffff"
-    sidebarTextHighlight: "#ba6cff"
+    sidebarTextCurrent: "#dbdbdb"
+    sidebarBackground: "#414141"
 
 slideshow: []

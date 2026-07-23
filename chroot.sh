@@ -68,10 +68,11 @@ sudo rm /usr/share/applications/calamares-install-debian.*
 sudo cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 
 sudo cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/
+sudo cp /persisos_temp/plymouth/plymouthd.defaults /usr/share/plymouth/plymouthd.defaults
 sudo plymouth-set-default-theme persisos
 
 sudo mkdir -p /boot/grub/
-sudo cp -r /persisos_temp/grub.cfg /boot/grub/grub.cfg
+sudo cp /persisos_temp/grub.cfg /boot/grub/grub.cfg
 
 sudo cp /persisos_temp/.face /etc/skel/.face
 sudo cp /persisos_temp/.face /root/.face
