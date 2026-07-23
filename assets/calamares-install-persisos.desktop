@@ -2,7 +2,7 @@
 Type=Application
 Version=1.0
 Name=Install PersisOS
-GenericName=Calamares Installer
+GenericName=PersisOS Installer
 Exec=calamares-install-debian
 Comment=PersisOS Installer
 Keywords=calamares;system;install;debian;installer

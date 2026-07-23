@@ -15,4 +15,10 @@ images:
     productIcon: "logo.png"
 
 
+style:
+    sidebarBackground: "#565656"
+    sidebarText: "#ffffff"
+    sidebarTextSelect: "#ffffff"
+    sidebarTextHighlight: "#ba6cff"
+
 slideshow: []
