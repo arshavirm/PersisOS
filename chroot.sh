@@ -64,7 +64,6 @@ sudo cp -r /persisos_temp/calamares/persisos /etc/calamares/branding/persisos
 sudo cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
 sudo cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.conf
 
-sudo rm /usr/share/applications/calamares-install-debian.*
 sudo cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 
 sudo cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/
