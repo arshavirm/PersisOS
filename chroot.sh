@@ -27,6 +27,7 @@ apt install -y --no-install-recommends \
     xfce4-power-manager \
     adwaita-icon-theme \
     gnome-icon-theme \
+    librsvg2-common \
     thunar \
     thunar-archive-plugin \
     thunar-volman \
