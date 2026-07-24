@@ -1,5 +1,7 @@
-![PersisOS](persisos.svg)
 # PersisOS
-### an easy to use linux distro
+
+![PersisOS](persisos.svg)
+
+## an easy to use linux distro
 
 ### coming soon
