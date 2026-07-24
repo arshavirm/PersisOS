@@ -7,7 +7,7 @@ echo "deb http://deb.debian.org/debian stable main contrib non-free non-free-fir
 
 apt update
 
-apt install -y \
+apt install -y --no-install-recommends \
     firmware-linux \
     linux-image-amd64 \
     live-boot \
@@ -15,7 +15,7 @@ apt install -y \
     live-config-systemd \
     systemd-sysv \
     grub-pc \
-    sudo \
+    \
     network-manager \
     xfce4 \
     lightdm \
@@ -39,46 +39,54 @@ apt install -y \
     calamares \
     calamares-settings-debian
 
-echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
+
+sed -i \
+    's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' \
+    /etc/locale.gen
+
 locale-gen
 update-locale LANG=en_US.UTF-8
 
-echo "PersisOS" > /etc/hostname
+hostnamectl set-hostname PersisOS
 
 cat > /etc/hosts <<EOF
 127.0.0.1 localhost
 127.0.1.1 PersisOS
 EOF
 
-sudo mkdir -p /etc/xdg/xfce4
-sudo cp -r /persisos_temp/xfce4 /etc/xdg/xfce4
+mkdir -p /etc/xdg/xfce4
+cp -r /persisos_temp/xfce4 /etc/xdg/xfce4
 
-sudo mkdir -p /etc/skel/.config
-sudo cp -r /persisos_temp/xfce4 /etc/skel/.config
+mkdir -p /etc/skel/.config
+cp -r /persisos_temp/xfce4 /etc/skel/.config
 
-sudo mkdir -p /root/.config
-sudo cp -r /persisos_temp/xfce4 /root/.config
+mkdir -p /root/.config
+cp -r /persisos_temp/xfce4 /root/.config
 
-sudo mkdir -p /etc/calamares/branding
-sudo cp -r /persisos_temp/calamares/persisos /etc/calamares/branding/persisos
-sudo cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
-sudo cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.conf
+mkdir -p /etc/calamares/branding
+cp -r /persisos_temp/calamares/persisos /etc/calamares/branding/persisos
+cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
+cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.conf
 
-sudo cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
+cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 
-sudo cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/
-sudo cp /persisos_temp/plymouth/plymouthd.defaults /usr/share/plymouth/plymouthd.defaults
-sudo plymouth-set-default-theme persisos
+cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/
+cp /persisos_temp/plymouth/plymouthd.defaults /usr/share/plymouth/plymouthd.defaults
+plymouth-set-default-theme persisos
 
-sudo mkdir -p /boot/grub/
-sudo cp /persisos_temp/grub.cfg /boot/grub/grub.cfg
+mkdir -p /boot/grub/
+cp /persisos_temp/grub.cfg /boot/grub/grub.cfg
 
-sudo cp /persisos_temp/.face /etc/skel/.face
-sudo cp /persisos_temp/.face /root/.face
+cp /persisos_temp/.face /etc/skel/.face
+cp /persisos_temp/.face /root/.face
 
-sudo cp /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
+cp /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
 
-useradd -m -G sudo -s /bin/bash user
+useradd \
+    --create-home \
+    --shell /bin/bash \
+    --groups sudo \
+    user
 
 echo "user:user" | chpasswd
 echo "root:root" | chpasswd
@@ -88,8 +96,8 @@ systemctl enable lightdm
 
 apt clean
 
-sudo update-initramfs -u -k all
+update-initramfs -u -k all
 
 rm -rf /var/lib/apt/lists/*
 
-rm -rd /persisos_temp
+rm -rf /persisos_temp
