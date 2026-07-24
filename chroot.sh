@@ -25,6 +25,8 @@ apt install -y --no-install-recommends \
     xfce4-terminal \
     xfce4-screenshooter \
     xfce4-power-manager \
+    adwaita-icon-theme \
+    gnome-icon-theme \
     thunar \
     thunar-archive-plugin \
     thunar-volman \
