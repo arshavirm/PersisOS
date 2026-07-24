@@ -26,12 +26,14 @@ apt install -y --no-install-recommends \
     xfce4-terminal \
     xfce4-screenshooter \
     xfce4-power-manager \
+    xfce4-battery-plugin \
     adwaita-icon-theme \
     gnome-icon-theme \
     librsvg2-common \
     thunar \
     thunar-archive-plugin \
     thunar-volman \
+    tumbler \
     gvfs \
     gvfs-backends \
     udisks2 \
@@ -92,6 +94,7 @@ cp -r /persisos_temp/calamares/persisos /etc/calamares/branding/persisos
 cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
 cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.conf
 
+rm /usr/share/applications/calamares*
 cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 
 cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/

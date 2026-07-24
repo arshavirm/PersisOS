@@ -2,23 +2,29 @@
 componentName: persisos
 
 welcomeStyleCalamares: false
+windowExpanding: normal
+windowSize: 800px,580px
+windowPlacement: center
+
 
 strings:
     productName: PersisOS
     shortProductName: PersisOS
     version: 1.0
     shortVersion: "1.0"
-    bootloaderEntryName: "PersisOS GNU/Linux"
+    bootloaderEntryName: "PersisOS"
 
 images:
     productLogo: "logo.png"
     productIcon: "logo.png"
 
+sidebar: widget
+navigation: widget
 
 style:
-    sidebarBackground: "#565656"
-    sidebarText: "#ffffff"
-    sidebarTextCurrent: "#dbdbdb"
-    sidebarBackground: "#414141"
+    SidebarBackground:    "#49265b"
+    SidebarText:          "#FFFFFF"
+    SidebarTextCurrent:   "#fbfbfb"
+    SidebarBackgroundCurrent: "#70266d"
 
-slideshow: []
+slideshow: ""

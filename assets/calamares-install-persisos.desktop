@@ -8,3 +8,5 @@ Icon=/usr/share/pixmaps/persisos/persisos.svg
 Path=
 Terminal=false
 StartupNotify=false
+Keywords=system;installer;install
+Categories=System;
