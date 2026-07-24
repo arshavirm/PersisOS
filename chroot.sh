@@ -15,6 +15,8 @@ apt install -y --no-install-recommends \
     live-config-systemd \
     systemd-sysv \
     grub-pc \
+    grub-efi-amd64 \
+    shim-signed \
     sudo \
     network-manager \
     network-manager-gnome \
