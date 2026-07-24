@@ -118,8 +118,7 @@ systemctl enable lightdm
 
 apt clean
 
+rm -rf /persisos_temp
+
 update-initramfs -u -k all
 
-rm -rf /var/lib/apt/lists/*
-
-rm -rf /persisos_temp
