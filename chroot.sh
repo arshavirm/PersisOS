@@ -17,25 +17,45 @@ apt install -y --no-install-recommends \
     grub-pc \
     sudo \
     network-manager \
+    network-manager-gnome \
+    xorg \
     xfce4 \
     lightdm \
     lightdm-gtk-greeter \
-    xfce4-goodies \
-    xorg \
-    locales \
-    dialog \
-    wget \
-    curl \
-    nano \
-    bash-completion \
+    xfce4-terminal \
+    xfce4-screenshooter \
+    xfce4-power-manager \
+    thunar \
+    thunar-archive-plugin \
+    thunar-volman \
+    gvfs \
+    gvfs-backends \
+    udisks2 \
+    mousepad \
+    ristretto \
+    evince \
+    file-roller \
+    p7zip-full \
+    firefox-esr \
+    vlc \
+    pipewire \
+    pipewire-pulse \
+    wireplumber \
+    pavucontrol \
     plymouth \
     dbus \
     avahi-daemon \
-    pulseaudio \
-    pavucontrol \
-    firefox-esr \
-    vlc \
-    dbus-x11 \
+    locales \
+    wget \
+    curl \
+    nano \
+    less \
+    bash-completion \
+    unzip \
+    zip \
+    xz-utils \
+    usbutils \
+    pciutils \
     calamares \
     calamares-settings-debian
 
