@@ -15,7 +15,7 @@ apt install -y --no-install-recommends \
     live-config-systemd \
     systemd-sysv \
     grub-pc \
-    \
+    sudo \
     network-manager \
     xfce4 \
     lightdm \
@@ -47,7 +47,7 @@ sed -i \
 locale-gen
 update-locale LANG=en_US.UTF-8
 
-hostnamectl set-hostname PersisOS
+echo "PersisOS" > /etc/hostname
 
 cat > /etc/hosts <<EOF
 127.0.0.1 localhost
