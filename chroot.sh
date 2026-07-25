@@ -23,7 +23,6 @@ apt install -y --no-install-recommends \
     dosfstools \
     udev \
     dbus-x11 \
-    polkitd \
     sudo \
     network-manager \
     network-manager-gnome \
