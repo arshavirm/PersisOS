@@ -36,7 +36,7 @@ apt install -y --no-install-recommends \
     xfce4-power-manager \
     xfce4-battery-plugin \
     adwaita-icon-theme \
-    gnome-themes-extra \
+    adwaita-icon-theme-legacy \
     gtk2-engines-pixbuf \
     gtk2-engines-murrine \
     librsvg2-common \
@@ -76,6 +76,10 @@ apt install -y --no-install-recommends \
     calamares \
     calamares-settings-debian
 
+
+wget https://github.com/arshavirm/apadana/releases/download/1.0/apadana_1.0_amd64.deb -o apadana_1.0_amd64.deb
+dpkg -i apadana_1.0_amd64.deb
+rm apadana_1.0_amd64.deb
 
 sed -i \
     's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' \
