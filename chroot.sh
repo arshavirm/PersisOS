@@ -18,6 +18,7 @@ apt install -y --no-install-recommends \
     live-config-systemd \
     systemd-sysv \
     grub-efi-amd64 \
+    shim-signed \
     e2fsprogs \
     dosfstools \
     udev \
@@ -34,7 +35,6 @@ apt install -y --no-install-recommends \
     xfce4-power-manager \
     xfce4-battery-plugin \
     adwaita-icon-theme \
-    adwaita-icon-theme-legacy \
     gtk2-engines-pixbuf \
     gtk2-engines-murrine \
     librsvg2-common \
