@@ -78,9 +78,9 @@ apt install -y --no-install-recommends \
 
 echo finished installing packages
 
-wget https://github.com/arshavirm/apadana/releases/download/1.0/apadana_1.0_amd64.deb
-apt install ./apadana_1.0_amd64.deb --no-install-recommends
-rm apadana_1.0_amd64.deb
+wget https://github.com/arshavirm/apadana/releases/download/1.1/apadana_1.1_amd64.deb
+apt install ./apadana_1.1_amd64.deb --no-install-recommends
+rm apadana_1.1_amd64.deb
 
 sed -i \
     's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' \
