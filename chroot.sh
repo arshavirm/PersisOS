@@ -17,7 +17,6 @@ apt install -y --no-install-recommends \
     live-config \
     live-config-systemd \
     grub-efi-amd64 \
-    shim-signed \
     e2fsprogs \
     dosfstools \
     udev \
@@ -73,6 +72,7 @@ apt install -y --no-install-recommends \
     calamares \
     calamares-settings-debian
 
+echo finished installing packages
 
 wget https://github.com/arshavirm/apadana/releases/download/1.0/apadana_1.0_amd64.deb -o apadana_1.0_amd64.deb
 dpkg -i apadana_1.0_amd64.deb
