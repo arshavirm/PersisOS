@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-
 DISTRO="PersisOS"
 VERSION="1.0"
 

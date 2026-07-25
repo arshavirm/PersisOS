@@ -36,7 +36,9 @@ apt install -y --no-install-recommends \
     xfce4-power-manager \
     xfce4-battery-plugin \
     adwaita-icon-theme \
-    gnome-icon-theme \
+    gnome-themes-extra \
+    gtk2-engines-pixbuf \
+    gtk2-engines-murrine \
     librsvg2-common \
     thunar \
     thunar-archive-plugin \
