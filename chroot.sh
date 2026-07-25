@@ -18,7 +18,6 @@ apt install -y --no-install-recommends \
     live-config-systemd \
     systemd-sysv \
     grub-efi-amd64 \
-    shim-signed \
     e2fsprogs \
     dosfstools \
     udev \
