@@ -1,60 +1,34 @@
 #!/bin/bash
 set -e
 
+
 DISTRO="PersisOS"
 VERSION="1.0"
 
-WORK=iso
-OUTPUT=output
+WORK="iso"
+OUTPUT="output"
 
+echo "Cleaning..."
 rm -rf "$WORK"
-mkdir -p "$WORK"
+mkdir -p "$WORK"/{boot/grub,live}
 mkdir -p "$OUTPUT"
 
-mkdir -p "$WORK/live"
-mkdir -p "$WORK/boot/grub"
-mkdir -p "$WORK/EFI/BOOT"
-
 echo "Copying live system..."
-
 cp live/live/filesystem.squashfs "$WORK/live/"
 cp live/vmlinuz "$WORK/live/"
 cp live/initrd "$WORK/live/"
-cp assets/grub.cfg $WORK/boot/grub/grub.cfg
 
-echo "Creating EFI image..."
-
-dd if=/dev/zero of=efiboot.img bs=1M count=20
-
-mkfs.vfat efiboot.img
-
-mkdir -p efimount
-
-sudo mount efiboot.img efimount
-
-sudo mkdir -p efimount/EFI/BOOT
-
-sudo grub-mkstandalone \
-    -O x86_64-efi \
-    --modules="part_gpt part_msdos fat iso9660 normal linux configfile search search_fs_file search_label search_fs_uuid efi_gop efi_uga gfxterm all_video font" \
-    --output=BOOTX64.EFI \
-    "boot/grub/grub.cfg=$WORK/boot/grub/grub.cfg"
-
-sudo cp BOOTX64.EFI efimount/EFI/BOOT/
-
-sudo umount efimount
-
-rm -rf efimount
-
-mv efiboot.img "$WORK/EFI/"
+echo "Copying GRUB configuration..."
+cp assets/grub.cfg "$WORK/boot/grub/grub.cfg"
 
 echo "Building ISO..."
 
 grub-mkrescue \
+    --compress=xz \
     -o "$OUTPUT/${DISTRO}-${VERSION}.iso" \
     "$WORK"
 
 echo
-echo "ISO created:"
-echo
-echo "$OUTPUT/${DISTRO}-${VERSION}.iso"
+echo "Done!"
+echo "ISO written to:"
+echo "  $OUTPUT/${DISTRO}-${VERSION}.iso"

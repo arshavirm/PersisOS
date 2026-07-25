@@ -27,4 +27,4 @@ style:
     SidebarTextCurrent:   "#fbfbfb"
     SidebarBackgroundCurrent: "#70266d"
 
-slideshow: ""
+slideshow: []
