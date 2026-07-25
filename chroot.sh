@@ -9,6 +9,9 @@ apt update
 
 apt install -y --no-install-recommends \
     firmware-linux \
+    firmware-linux-free \
+    firmware-linux-nonfree \
+    firmware-misc-nonfree \
     linux-image-amd64 \
     live-boot \
     live-config \
@@ -16,6 +19,12 @@ apt install -y --no-install-recommends \
     systemd-sysv \
     grub-efi-amd64 \
     shim-signed \
+    e2fsprogs \
+    dosfstools \
+    udev \
+    dbus-x11 \
+    policykit-1 \
+    polkitd \
     sudo \
     network-manager \
     network-manager-gnome \
@@ -49,6 +58,7 @@ apt install -y --no-install-recommends \
     wireplumber \
     pavucontrol \
     plymouth \
+    plymouth-themes \
     dbus \
     avahi-daemon \
     locales \
