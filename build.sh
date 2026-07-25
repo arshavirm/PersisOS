@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+trap 'echo "An error occurred!"; cleanup' ERR
+
+cleanup() {
+    sudo umount -lf $ROOTFS/dev/pts
+    sudo umount -lf $ROOTFS/dev
+    sudo umount -lf $ROOTFS/proc
+    sudo umount -lf $ROOTFS/sys
+    sudo umount -lf $ROOTFS/run
+    sudo rm -rf "$ROOTFS"
+}
+
 DIST=stable
 ARCH=amd64
 ROOTFS=rootfs
