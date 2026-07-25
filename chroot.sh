@@ -23,7 +23,6 @@ apt install -y --no-install-recommends \
     dosfstools \
     udev \
     dbus-x11 \
-    policykit-1 \
     polkitd \
     sudo \
     network-manager \
