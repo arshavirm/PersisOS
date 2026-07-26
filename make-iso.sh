@@ -17,7 +17,9 @@ cp live/live/filesystem.squashfs "$WORK/live/"
 cp live/vmlinuz "$WORK/live/"
 cp live/initrd "$WORK/live/"
 
-cp -r $LIVE/boot/ $WORK/
+cp live/memtest86*.efi "$WORK/boot/"
+cp live/memtest86*.bin "$WORK/boot/"
+
 
 echo "Copying GRUB configuration..."
 cp assets/grub.cfg "$WORK/boot/grub/grub.cfg"
