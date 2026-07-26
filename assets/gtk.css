@@ -36,7 +36,6 @@
 * {
   font-family: "Inter", "Cantarell", "Noto Sans", sans-serif;
   font-size: 10.5pt;
-  -gtk-icon-shadow: none;
   outline-color: alpha(@accent_color, 0.5);
   outline-style: solid;
   outline-offset: -2px;
@@ -52,12 +51,9 @@ window,
 decoration {
   background-color: @window_bg_color;
   border-radius: 10px 10px 0 0;
-  box-shadow: 0 6px 20px alpha(#000000, 0.22);
 }
 
-decoration:backdrop {
-  box-shadow: 0 3px 10px alpha(#000000, 0.14);
-}
+decoration:backdrop {}
 
 window.background {
   background-color: @window_bg_color;
@@ -67,7 +63,6 @@ headerbar {
   background-color: @headerbar_bg_color;
   color: @headerbar_fg_color;
   border-bottom: 1px solid @headerbar_border;
-  box-shadow: none;
   padding: 4px 6px;
   min-height: 40px;
 }
@@ -79,7 +74,6 @@ headerbar .title {
 headerbar button {
   background: transparent;
   border: none;
-  box-shadow: none;
 }
 
 headerbar button:hover {
@@ -92,7 +86,6 @@ button {
   border: 1px solid @button_border_color;
   border-radius: 8px;
   padding: 6px 14px;
-  box-shadow: none;
   transition: background-color 120ms ease, border-color 120ms ease;
 }
 
@@ -134,7 +127,6 @@ button.destructive-action:hover {
 button.flat {
   border: none;
   background: transparent;
-  box-shadow: none;
 }
 
 button.flat:hover {
@@ -147,12 +139,10 @@ entry {
   border: 1px solid @border_color;
   border-radius: 8px;
   padding: 6px 10px;
-  box-shadow: none;
 }
 
 entry:focus {
   border-color: @accent_color;
-  box-shadow: 0 0 0 1px alpha(@accent_color, 0.4);
 }
 
 entry:disabled {
@@ -203,7 +193,6 @@ switch slider {
   min-width: 18px;
   min-height: 18px;
   margin: 1px;
-  box-shadow: 0 1px 2px alpha(#000000, 0.25);
 }
 
 scale trough {
@@ -223,7 +212,6 @@ scale slider {
   border-radius: 100%;
   min-width: 16px;
   min-height: 16px;
-  box-shadow: 0 1px 2px alpha(#000000, 0.2);
 }
 
 progressbar trough {
@@ -276,7 +264,6 @@ popover {
   color: @view_fg_color;
   border: 1px solid @border_color;
   border-radius: 10px;
-  box-shadow: 0 4px 16px alpha(#000000, 0.18);
   padding: 4px;
 }
 
