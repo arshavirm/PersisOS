@@ -72,6 +72,7 @@ apt install -y --no-install-recommends \
     zip \
     xz-utils \
     usbutils \
+    squashfs-tools \
     pciutils \
     calamares \
     calamares-settings-debian
