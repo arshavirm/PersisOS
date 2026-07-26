@@ -17,6 +17,7 @@ apt install -y --no-install-recommends \
     live-config \
     live-config-systemd \
     grub-efi-amd64 \
+    memtest86+ \
     shim-signed \
     systemd-sysv \
     e2fsprogs \

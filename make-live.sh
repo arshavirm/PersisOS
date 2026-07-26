@@ -35,3 +35,6 @@ echo "Copying initrd..."
 sudo cp "$ROOTFS"/boot/initrd.img-* "$LIVE/initrd"
 
 echo "Live filesystem complete."
+
+cp "$ROOTFS"/boot/memtest86+.bin $LIVE/boot/
+cp "$ROOTFS"/boot/memtest86+.efi $LIVE/boot/ 
