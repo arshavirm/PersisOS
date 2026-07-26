@@ -36,8 +36,7 @@ apt install -y --no-install-recommends \
     xfce4-screenshooter \
     xfce4-power-manager \
     xfce4-battery-plugin \
-    adwaita-icon-theme \
-    adwaita-icon-theme-legacy \
+    tango-icon-theme \
     gtk2-engines-pixbuf \
     gtk2-engines-murrine \
     librsvg2-common \
