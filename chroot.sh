@@ -141,6 +141,7 @@ echo "root:root" | chpasswd
 systemctl enable NetworkManager
 systemctl enable lightdm
 
+apt autoremove
 apt clean
 
 rm -rf /persisos_temp
