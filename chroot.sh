@@ -57,8 +57,6 @@ apt install -y --no-install-recommends \
     pipewire-pulse \
     wireplumber \
     pavucontrol \
-    plymouth \
-    plymouth-themes \
     dbus \
     avahi-daemon \
     locales \
@@ -112,10 +110,6 @@ cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.con
 
 rm /usr/share/applications/calamares*
 cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
-
-cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/
-cp /persisos_temp/plymouth/plymouthd.defaults /usr/share/plymouth/plymouthd.defaults
-plymouth-set-default-theme persisos
 
 mkdir -p /boot/grub/
 cp /persisos_temp/grub.cfg /boot/grub/grub.cfg
