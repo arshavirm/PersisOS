@@ -28,9 +28,10 @@ apt install -y --no-install-recommends \
     network-manager \
     network-manager-gnome \
     xorg \
-    xfce4 \
     lightdm \
     lightdm-gtk-greeter \
+    xfce4 \
+    xfce4-goodies \
     xfce4-terminal \
     xfce4-screenshooter \
     xfce4-power-manager \
@@ -55,8 +56,10 @@ apt install -y --no-install-recommends \
     firefox-esr \
     vlc \
     pipewire \
+    pipewire-audio \
     pipewire-pulse \
     wireplumber \
+    alsa-utils \
     pavucontrol \
     dbus \
     avahi-daemon \
