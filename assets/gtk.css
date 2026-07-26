@@ -1,0 +1,334 @@
+@define-color accent_color #3584e4;
+@define-color accent_fg_color #ffffff;
+
+@define-color window_bg_color #f6f6f6;
+@define-color window_fg_color #2e2e2e;
+
+@define-color view_bg_color #ffffff;
+@define-color view_fg_color #2e2e2e;
+
+@define-color headerbar_bg_color #ffffff;
+@define-color headerbar_fg_color #2e2e2e;
+@define-color headerbar_border #e0e0e0;
+
+@define-color button_bg_color #ffffff;
+@define-color button_fg_color #2e2e2e;
+@define-color button_border_color #d8d8d8;
+@define-color button_hover_bg #f0f0f0;
+@define-color button_active_bg #e6e6e6;
+
+@define-color border_color #dcdcdc;
+@define-color divider_color #e5e5e5;
+
+@define-color disabled_fg_color #a0a0a0;
+@define-color disabled_bg_color #f0f0f0;
+
+@define-color selected_bg_color @accent_color;
+@define-color selected_fg_color @accent_fg_color;
+
+@define-color tooltip_bg_color #2e2e2e;
+@define-color tooltip_fg_color #ffffff;
+
+@define-color scrollbar_bg rgba(0, 0, 0, 0.06);
+@define-color scrollbar_slider rgba(0, 0, 0, 0.28);
+@define-color scrollbar_slider_hover rgba(0, 0, 0, 0.42);
+
+* {
+  font-family: "Inter", "Cantarell", "Noto Sans", sans-serif;
+  font-size: 10.5pt;
+  -gtk-icon-shadow: none;
+  outline-color: alpha(@accent_color, 0.5);
+  outline-style: solid;
+  outline-offset: -2px;
+  outline-width: 1px;
+}
+
+window,
+.background {
+  background-color: @window_bg_color;
+  color: @window_fg_color;
+}
+
+decoration {
+  background-color: @window_bg_color;
+  border-radius: 10px 10px 0 0;
+  box-shadow: 0 6px 20px alpha(#000000, 0.22);
+}
+
+decoration:backdrop {
+  box-shadow: 0 3px 10px alpha(#000000, 0.14);
+}
+
+window.background {
+  background-color: @window_bg_color;
+}
+
+headerbar {
+  background-color: @headerbar_bg_color;
+  color: @headerbar_fg_color;
+  border-bottom: 1px solid @headerbar_border;
+  box-shadow: none;
+  padding: 4px 6px;
+  min-height: 40px;
+}
+
+headerbar .title {
+  font-weight: 600;
+}
+
+headerbar button {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+headerbar button:hover {
+  background-color: alpha(#000000, 0.06);
+}
+
+button {
+  background-color: @button_bg_color;
+  color: @button_fg_color;
+  border: 1px solid @button_border_color;
+  border-radius: 8px;
+  padding: 6px 14px;
+  box-shadow: none;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+button:hover {
+  background-color: @button_hover_bg;
+}
+
+button:active,
+button:checked {
+  background-color: @button_active_bg;
+}
+
+button:disabled {
+  background-color: @disabled_bg_color;
+  color: @disabled_fg_color;
+  border-color: @divider_color;
+}
+
+button.suggested-action {
+  background-color: @accent_color;
+  color: @accent_fg_color;
+  border-color: @accent_color;
+}
+
+button.suggested-action:hover {
+  background-color: shade(@accent_color, 1.08);
+}
+
+button.destructive-action {
+  background-color: #e01b24;
+  color: #ffffff;
+  border-color: #e01b24;
+}
+
+button.destructive-action:hover {
+  background-color: shade(#e01b24, 1.1);
+}
+
+button.flat {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+button.flat:hover {
+  background-color: alpha(#000000, 0.06);
+}
+
+entry {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+  border: 1px solid @border_color;
+  border-radius: 8px;
+  padding: 6px 10px;
+  box-shadow: none;
+}
+
+entry:focus {
+  border-color: @accent_color;
+  box-shadow: 0 0 0 1px alpha(@accent_color, 0.4);
+}
+
+entry:disabled {
+  background-color: @disabled_bg_color;
+  color: @disabled_fg_color;
+}
+
+checkbutton check,
+radiobutton radio {
+  border: 1px solid @border_color;
+  background-color: @view_bg_color;
+  min-width: 16px;
+  min-height: 16px;
+}
+
+checkbutton check {
+  border-radius: 4px;
+}
+
+radiobutton radio {
+  border-radius: 100%;
+}
+
+checkbutton check:checked,
+radiobutton radio:checked {
+  background-color: @accent_color;
+  border-color: @accent_color;
+  color: @accent_fg_color;
+}
+
+switch {
+  border-radius: 12px;
+  background-color: @disabled_bg_color;
+  border: 1px solid @border_color;
+  min-width: 40px;
+  min-height: 22px;
+  transition: background-color 150ms ease;
+}
+
+switch:checked {
+  background-color: @accent_color;
+  border-color: @accent_color;
+}
+
+switch slider {
+  border-radius: 100%;
+  background-color: #ffffff;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 1px;
+  box-shadow: 0 1px 2px alpha(#000000, 0.25);
+}
+
+scale trough {
+  background-color: @disabled_bg_color;
+  border-radius: 6px;
+  min-height: 6px;
+}
+
+scale trough highlight {
+  background-color: @accent_color;
+  border-radius: 6px;
+}
+
+scale slider {
+  background-color: #ffffff;
+  border: 1px solid @border_color;
+  border-radius: 100%;
+  min-width: 16px;
+  min-height: 16px;
+  box-shadow: 0 1px 2px alpha(#000000, 0.2);
+}
+
+progressbar trough {
+  background-color: @disabled_bg_color;
+  border-radius: 6px;
+  min-height: 6px;
+}
+
+progressbar progress {
+  background-color: @accent_color;
+  border-radius: 6px;
+}
+
+notebook>header {
+  background-color: @window_bg_color;
+  border-color: @divider_color;
+}
+
+notebook>header tab {
+  padding: 6px 14px;
+  color: @disabled_fg_color;
+  border-bottom: 2px solid transparent;
+}
+
+notebook>header tab:checked {
+  color: @window_fg_color;
+  border-bottom-color: @accent_color;
+}
+
+list,
+treeview {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+}
+
+treeview.view:selected,
+list row:selected {
+  background-color: alpha(@accent_color, 0.15);
+  color: @window_fg_color;
+}
+
+row:hover {
+  background-color: alpha(#000000, 0.04);
+}
+
+menu,
+.menu,
+popover {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+  border: 1px solid @border_color;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px alpha(#000000, 0.18);
+  padding: 4px;
+}
+
+menuitem,
+modelbutton {
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+menuitem:hover,
+modelbutton:hover {
+  background-color: alpha(@accent_color, 0.12);
+}
+
+tooltip {
+  background-color: @tooltip_bg_color;
+  color: @tooltip_fg_color;
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+scrollbar {
+  background-color: transparent;
+}
+
+scrollbar slider {
+  background-color: @scrollbar_slider;
+  border-radius: 8px;
+  min-width: 8px;
+  min-height: 8px;
+}
+
+scrollbar slider:hover {
+  background-color: @scrollbar_slider_hover;
+}
+
+separator {
+  background-color: @divider_color;
+  min-width: 1px;
+  min-height: 1px;
+}
+
+toolbar {
+  background-color: @window_bg_color;
+  border-color: @divider_color;
+  padding: 4px;
+}
+
+infobar {
+  border-radius: 8px;
+}
+
+dialog {
+  background-color: @window_bg_color;
+}

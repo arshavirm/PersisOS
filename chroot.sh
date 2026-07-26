@@ -116,6 +116,12 @@ cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.con
 rm /usr/share/applications/calamares*
 cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 
+mkdir -p /etc/skel/.themes/Persis/gtk-3.0/
+cp /persisos_temp/gtk.css /etc/skel/.themes/Persis/gtk-3.0/gtk.css
+
+mkdir -p /root/.themes/Persis/gtk-3.0/
+cp /persisos_temp/gtk.css /root/.themes/Persis/gtk-3.0/gtk.css
+
 mkdir -p /boot/grub/
 cp /persisos_temp/grub.cfg /boot/grub/grub.cfg
 

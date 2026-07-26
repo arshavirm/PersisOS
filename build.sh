@@ -59,6 +59,8 @@ sudo cp assets/calamares-install-persisos.desktop $ROOTFS/persisos_temp/calamare
 sudo cp assets/.face $ROOTFS/persisos_temp/.face
 sudo cp assets/lightdm-gtk-greeter.conf $ROOTFS/persisos_temp/lightdm-gtk-greeter.conf
 
+sudo cp assets/gtk.css $ROOTFS/persisos_temp/gtk.css
+
 sudo cp chroot.sh $ROOTFS/root/
 
 echo "[4/6] Entering chroot..."
