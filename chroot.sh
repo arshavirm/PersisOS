@@ -62,6 +62,7 @@ apt install -y --no-install-recommends \
     locales \
     wget \
     ca-certificates \
+    cracklib-runtime \
     curl \
     nano \
     less \
