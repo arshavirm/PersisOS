@@ -56,6 +56,7 @@ apt install -y --no-install-recommends \
     pipewire-pulse \
     wireplumber \
     alsa-utils \
+    libspa-0.2-bluetooth \
     pavucontrol \
     dbus \
     avahi-daemon \
@@ -63,6 +64,7 @@ apt install -y --no-install-recommends \
     wget \
     wireless-regdb \
     wireless-tools \
+    nm-applet \
     iw \
     wpasupplicant \
     ca-certificates \
@@ -142,8 +144,11 @@ useradd \
 echo "user:user" | chpasswd
 echo "root:root" | chpasswd
 
-systemctl enable NetworkManager
 systemctl enable lightdm
+systemctl enable NetworkManager
+systemctl --user enable pipewire
+systemctl --user enable pipewire-pulse
+systemctl --user enable wireplumber
 
 apt autoremove
 apt clean
