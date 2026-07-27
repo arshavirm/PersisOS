@@ -1,3 +1,7 @@
+/* ==========================================================================
+   Persis GTK3 theme — XFCE4
+   ========================================================================== */
+
 @define-color accent_color #3584e4;
 @define-color accent_fg_color #ffffff;
 
@@ -74,6 +78,7 @@ headerbar .title {
 headerbar button {
   background: transparent;
   border: none;
+  color: @headerbar_fg_color;
 }
 
 headerbar button:hover {
@@ -127,11 +132,39 @@ button.destructive-action:hover {
 button.flat {
   border: none;
   background: transparent;
+  color: @button_fg_color;
 }
 
 button.flat:hover {
   background-color: alpha(#000000, 0.06);
 }
+
+button image,
+button.flat image,
+menuitem image,
+modelbutton image {
+  color: @button_fg_color;
+  -gtk-icon-style: symbolic;
+}
+
+headerbar button image {
+  color: @headerbar_fg_color;
+}
+
+button.suggested-action image,
+button.destructive-action image {
+  color: @accent_fg_color;
+}
+
+button:disabled image,
+menuitem:disabled image,
+modelbutton:disabled image {
+  color: @disabled_fg_color;
+}
+
+/* --------------------------------------------------------------------
+   Entries
+   -------------------------------------------------------------------- */
 
 entry {
   background-color: @view_bg_color;
@@ -147,6 +180,10 @@ entry:focus {
 
 entry:disabled {
   background-color: @disabled_bg_color;
+  color: @disabled_fg_color;
+}
+
+entry image {
   color: @disabled_fg_color;
 }
 
@@ -258,8 +295,22 @@ row:hover {
 }
 
 menu,
-.menu,
-popover {
+.menu {
+  background-color: @view_bg_color;
+  color: @view_fg_color;
+  border: 1px solid @border_color;
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 4px 12px alpha(#000000, 0.18);
+}
+
+popover.background {
+  background-color: transparent;
+  border: none;
+  box-shadow: 0 4px 12px alpha(#000000, 0.18);
+}
+
+popover.background contents {
   background-color: @view_bg_color;
   color: @view_fg_color;
   border: 1px solid @border_color;
@@ -267,10 +318,16 @@ popover {
   padding: 4px;
 }
 
+popover arrow {
+  background-color: @view_bg_color;
+  border-color: @border_color;
+}
+
 menuitem,
 modelbutton {
   border-radius: 6px;
   padding: 6px 10px;
+  color: @view_fg_color;
 }
 
 menuitem:hover,
@@ -278,11 +335,26 @@ modelbutton:hover {
   background-color: alpha(@accent_color, 0.12);
 }
 
+menuitem:disabled,
+modelbutton:disabled {
+  color: @disabled_fg_color;
+}
+
+menu separator,
+.menu separator {
+  background-color: @divider_color;
+  margin: 4px 0;
+}
+
 tooltip {
   background-color: @tooltip_bg_color;
   color: @tooltip_fg_color;
   border-radius: 6px;
   padding: 4px 8px;
+}
+
+tooltip image {
+  color: @tooltip_fg_color;
 }
 
 scrollbar {
@@ -310,6 +382,11 @@ toolbar {
   background-color: @window_bg_color;
   border-color: @divider_color;
   padding: 4px;
+}
+
+toolbar button image,
+toolbutton image {
+  color: @button_fg_color;
 }
 
 infobar {

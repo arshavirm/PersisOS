@@ -16,7 +16,7 @@ apt install -y --no-install-recommends \
     live-boot \
     live-config \
     live-config-systemd \
-    grub-efi-amd64 \
+    grub2 \
     memtest86+ \
     shim-signed \
     systemd-sysv \
@@ -50,7 +50,6 @@ apt install -y --no-install-recommends \
     mousepad \
     ristretto \
     evince \
-    file-roller \
     p7zip-full \
     pipewire \
     pipewire-audio \
