@@ -61,6 +61,10 @@ apt install -y --no-install-recommends \
     avahi-daemon \
     locales \
     wget \
+    wireless-regdb \
+    wireless-tools \
+    iw \
+    wpasupplicant \
     ca-certificates \
     cracklib-runtime \
     curl \
