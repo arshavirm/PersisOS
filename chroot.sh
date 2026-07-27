@@ -138,9 +138,9 @@ useradd \
     --create-home \
     --shell /bin/bash \
     --groups sudo \
-    user
+    admin
 
-echo "user:user" | chpasswd
+echo "admin:admin" | chpasswd
 echo "root:root" | chpasswd
 
 systemctl enable lightdm
