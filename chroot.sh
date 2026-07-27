@@ -64,7 +64,6 @@ apt install -y --no-install-recommends \
     wget \
     wireless-regdb \
     wireless-tools \
-    nm-applet \
     iw \
     wpasupplicant \
     ca-certificates \
