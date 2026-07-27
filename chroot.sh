@@ -20,6 +20,7 @@ apt install -y --no-install-recommends \
     memtest86+ \
     shim-signed \
     systemd-sysv \
+    systemd-machine-id-setup \
     e2fsprogs \
     dosfstools \
     udev \
@@ -145,9 +146,9 @@ echo "root:root" | chpasswd
 
 systemctl enable lightdm
 systemctl enable NetworkManager
-systemctl enable --user pipewire
-systemctl enable --user pipewire-pulse
-systemctl enable --user wireplumber
+systemctl enable avahi-daemon
+
+systemd-machine-id-setup
 
 apt autoremove
 apt clean
