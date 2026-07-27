@@ -145,9 +145,9 @@ echo "root:root" | chpasswd
 
 systemctl enable lightdm
 systemctl enable NetworkManager
-systemctl enable pipewire
-systemctl enable pipewire-pulse
-systemctl enable wireplumber
+systemctl enable --user pipewire
+systemctl enable --user pipewire-pulse
+systemctl enable --user wireplumber
 
 apt autoremove
 apt clean
