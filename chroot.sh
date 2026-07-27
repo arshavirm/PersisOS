@@ -20,7 +20,6 @@ apt install -y --no-install-recommends \
     memtest86+ \
     shim-signed \
     systemd-sysv \
-    systemd-machine-id-setup \
     e2fsprogs \
     dosfstools \
     udev \
