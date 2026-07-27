@@ -47,8 +47,10 @@ sudo cp assets/backgrounds/naqsh-e-rostam.jpg $ROOTFS/usr/share/backgrounds/pers
 
 sudo mkdir -p $ROOTFS/usr/share/pixmaps/persisos
 sudo cp persisos.svg $ROOTFS/usr/share/pixmaps/persisos/persisos.svg
+sudo cp persisos.svg $ROOTFS/usr/share/pixmaps/persisos.svg
 
 sudo cp assets/os-release $ROOTFS/etc/os-release
+sudo cp assets/os-release $ROOTFS/usr/lib/os-release
 
 sudo mkdir -p $ROOTFS/persisos_temp
 sudo cp -r assets/xfce4 $ROOTFS/persisos_temp/xfce4
