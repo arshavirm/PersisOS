@@ -1,8 +1,11 @@
-# This is a basic workflow to help you get started with Actions
+name: Release Build
 
-name: Build
+on:
+  release:
+    types: [published]
 
-on: workflow_dispatch
+permissions:
+  contents: write   
 
 jobs:
   build:
@@ -25,10 +28,10 @@ jobs:
           sudo ./make-live.sh
           sudo ./make-iso.sh
           ls output -lh         
-      - name: Upload ISO
-        uses: actions/upload-artifact@v4
+
+      - name: Upload .deb and binary to the release
+        uses: softprops/action-gh-release@v2
         with:
-          name: persisos-amd64
-          path: output/*.iso
-          compression-level: 0
-          retention-days: 30
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            output/*.iso
