@@ -52,9 +52,6 @@ apt install -y --no-install-recommends \
     evince \
     p7zip-full \
     pulseaudio \
-    pipewire \
-    pipewire-audio \
-    pipewire-pulse \
     wireplumber \
     alsa-utils \
     libspa-0.2-bluetooth \
