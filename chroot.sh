@@ -51,6 +51,7 @@ apt install -y --no-install-recommends \
     ristretto \
     evince \
     p7zip-full \
+    pulseaudio \
     pipewire \
     pipewire-audio \
     pipewire-pulse \
@@ -136,6 +137,7 @@ cp /persisos_temp/.face /etc/skel/.face
 cp /persisos_temp/.face /root/.face
 
 cp /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
+cp /persisos_temp/lightdm.conf /etc/lightdm/lightdm.conf
 
 useradd \
     --create-home \
@@ -157,5 +159,6 @@ apt clean
 
 rm -rf /persisos_temp
 
+apt update
 update-initramfs -u -k all
 
