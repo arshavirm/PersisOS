@@ -7,7 +7,7 @@ echo "deb http://deb.debian.org/debian stable main contrib non-free non-free-fir
 
 apt update
 
-apt install -y --no-install-recommends \
+apt install -y \
     firmware-linux \
     firmware-linux-free \
     firmware-linux-nonfree \

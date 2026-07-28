@@ -23,7 +23,6 @@ sudo rm -rf "$ROOTFS"
 
 sudo debootstrap \
     --arch=$ARCH \
-    --variant=minbase \
     $DIST \
     $ROOTFS \
     $MIRROR
