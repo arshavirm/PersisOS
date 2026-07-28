@@ -40,6 +40,7 @@ apt install -y \
     wpasupplicant \
     wireless-regdb \
     iw \
+    wget \
     p7zip-full \
     zip \
     unzip \
