@@ -134,15 +134,14 @@ cp /persisos_temp/.face /etc/skel/.face
 cp /persisos_temp/.face /root/.face
 
 cp /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
-cp /persisos_temp/lightdm.conf /etc/lightdm/lightdm.conf
 
 useradd \
     --create-home \
     --shell /bin/bash \
     --groups sudo \
-    admin
+    user
 
-echo "admin:admin" | chpasswd
+echo "user:user" | chpasswd
 echo "root:root" | chpasswd
 
 systemctl enable lightdm
