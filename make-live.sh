@@ -12,10 +12,6 @@ echo "Cleaning..."
 
 sudo rm -rf "$ROOTFS/tmp/"*
 sudo rm -rf "$ROOTFS/var/cache/apt/"*
-sudo rm -rf "$ROOTFS/var/lib/apt/lists/"*
-sudo rm -f "$ROOTFS/etc/machine-id"
-
-sudo touch "$ROOTFS/etc/machine-id"
 
 echo "Creating SquashFS..."
 
