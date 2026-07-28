@@ -9,21 +9,15 @@ apt update
 
 apt install -y \
     firmware-linux \
-    firmware-linux-free \
-    firmware-linux-nonfree \
     firmware-misc-nonfree \
     linux-image-amd64 \
     live-boot \
     live-config \
     live-config-systemd \
     grub2 \
-    memtest86+ \
     shim-signed \
     systemd-sysv \
-    e2fsprogs \
     dosfstools \
-    udev \
-    dbus-x11 \
     sudo \
     network-manager \
     network-manager-gnome \
@@ -32,53 +26,26 @@ apt install -y \
     lightdm-gtk-greeter \
     xfce4 \
     xfce4-goodies \
-    xfce4-terminal \
-    xfce4-screenshooter \
-    xfce4-power-manager \
-    xfce4-battery-plugin \
-    tango-icon-theme \
-    gtk2-engines-pixbuf \
-    gtk2-engines-murrine \
-    librsvg2-common \
-    thunar \
     thunar-archive-plugin \
     thunar-volman \
-    tumbler \
-    gvfs \
-    gvfs-backends \
-    udisks2 \
-    mousepad \
     ristretto \
+    mousepad \
     evince \
-    p7zip-full \
-    pulseaudio \
+    pipewire \
+    pipewire-pulse \
     wireplumber \
     alsa-utils \
     libspa-0.2-bluetooth \
     pavucontrol \
-    dbus \
-    avahi-daemon \
-    locales \
-    wget \
+    wpasupplicant \
     wireless-regdb \
     iw \
-    wpasupplicant \
-    ca-certificates \
-    cracklib-runtime \
-    curl \
-    exo-utils \
-    xfce4-panel \
-    xfdesktop4 \
-    libgarcon-gtk3-1-0 \
-    nano \
-    less \
-    bash-completion \
-    unzip \
+    p7zip-full \
     zip \
-    xz-utils \
+    unzip \
     usbutils \
-    squashfs-tools \
     pciutils \
+    librsvg2-common \
     calamares \
     calamares-settings-debian
 
