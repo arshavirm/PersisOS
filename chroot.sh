@@ -15,6 +15,7 @@ apt install -y \
     live-config \
     live-config-systemd \
     grub2 \
+    memtest86+ \
     shim-signed \
     systemd-sysv \
     dosfstools \
