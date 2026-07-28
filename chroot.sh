@@ -88,7 +88,6 @@ cp -r /persisos_temp/calamares/packagechooser.conf /etc/calamares/modules/packag
 
 
 rm /usr/share/applications/calamares*
-rm /bin/clamares-install-debian
 cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 
 mkdir -p /etc/skel/.themes/Persis/gtk-3.0/
