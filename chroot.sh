@@ -1,13 +1,13 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
 echo "deb http://deb.debian.org/debian stable main contrib non-free non-free-firmware" > /etc/apt/sources.list
 
-apt update
+apt-get update
 
-apt install -y \
+apt-get install -y \
     firmware-linux \
     firmware-misc-nonfree \
     linux-image-amd64 \
@@ -53,9 +53,9 @@ apt install -y \
 
 echo finished installing packages
 
-wget https://github.com/arshavirm/apadana/releases/download/1.2/apadana_1.2_amd64.deb
-apt install ./apadana_1.2_amd64.deb --no-install-recommends
-rm apadana_1.2_amd64.deb
+wget -O apadana_1.2_amd64.deb https://github.com/arshavirm/apadana/releases/download/1.2/apadana_1.2_amd64.deb
+apt-get install -y ./apadana_1.2_amd64.deb --no-install-recommends
+rm -f apadana_1.2_amd64.deb
 
 sed -i \
     's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' \
@@ -71,14 +71,11 @@ cat > /etc/hosts <<EOF
 127.0.1.1 PersisOS
 EOF
 
-mkdir -p /etc/xdg/xfce4
-cp -r /persisos_temp/xfce4 /etc/xdg/xfce4
 
-mkdir -p /etc/skel/.config
-cp -r /persisos_temp/xfce4 /etc/skel/.config
-
-mkdir -p /root/.config
-cp -r /persisos_temp/xfce4 /root/.config
+mkdir -p /etc/xdg/xfce4 /etc/skel/.config/xfce4 /root/.config/xfce4
+cp -r /persisos_temp/xfce4/. /etc/xdg/xfce4/
+cp -r /persisos_temp/xfce4/. /etc/skel/.config/xfce4/
+cp -r /persisos_temp/xfce4/. /root/.config/xfce4/
 
 mkdir -p /etc/calamares/branding
 cp -r /persisos_temp/calamares/persisos /etc/calamares/branding/persisos
@@ -86,22 +83,20 @@ cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
 cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.conf
 cp -r /persisos_temp/calamares/packagechooser.conf /etc/calamares/modules/packagechooser.conf
 
-rm /usr/share/applications/calamares*
-cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
+rm -f /usr/share/applications/calamares*.desktop
+install -Dm644 /persisos_temp/calamares-install-persisos.desktop \
+    /usr/share/applications/calamares-install-persisos.desktop
+update-desktop-database /usr/share/applications || true
 
-mkdir -p /etc/skel/.themes/Persis/gtk-3.0/
-cp /persisos_temp/gtk.css /etc/skel/.themes/Persis/gtk-3.0/gtk.css
+install -Dm644 /persisos_temp/gtk.css /etc/skel/.themes/Persis/gtk-3.0/gtk.css
+install -Dm644 /persisos_temp/gtk.css /root/.themes/Persis/gtk-3.0/gtk.css
 
-mkdir -p /root/.themes/Persis/gtk-3.0/
-cp /persisos_temp/gtk.css /root/.themes/Persis/gtk-3.0/gtk.css
+install -Dm644 /persisos_temp/grub.cfg /boot/grub/grub.cfg
 
-mkdir -p /boot/grub/
-cp /persisos_temp/grub.cfg /boot/grub/grub.cfg
+install -Dm644 /persisos_temp/.face /etc/skel/.face
+install -Dm644 /persisos_temp/.face /root/.face
 
-cp /persisos_temp/.face /etc/skel/.face
-cp /persisos_temp/.face /root/.face
-
-cp /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
+install -Dm644 /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
 
 useradd \
     --create-home \
@@ -118,11 +113,10 @@ systemctl enable avahi-daemon
 
 systemd-machine-id-setup
 
-apt autoremove
-apt clean
+apt-get autoremove -y
+apt-get clean
 
 rm -rf /persisos_temp
 
-apt update
+apt-get update
 update-initramfs -u -k all
-
