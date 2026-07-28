@@ -86,7 +86,6 @@ cp -r /persisos_temp/calamares/settings.conf /etc/calamares/settings.conf
 cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.conf
 cp -r /persisos_temp/calamares/packagechooser.conf /etc/calamares/modules/packagechooser.conf
 
-
 rm /usr/share/applications/calamares*
 cp /persisos_temp/calamares-install-persisos.desktop /usr/share/applications/calamares-install-persisos.desktop
 

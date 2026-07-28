@@ -43,9 +43,6 @@ sudo cp assets/backgrounds/background_2.png $ROOTFS/usr/share/backgrounds/persis
 sudo cp assets/backgrounds/maharloo-lake.jpeg $ROOTFS/usr/share/backgrounds/persisos/maharloo-lake.jpeg
 sudo cp assets/backgrounds/naqsh-e-rostam.jpg $ROOTFS/usr/share/backgrounds/persisos/naqsh-e-rostam.jpg
 
-sudo mkdir -p $ROOTFS/usr/share/desktop-base/persisos
-sudo cp -r assets/backgrounds $ROOTFS/usr/share/desktop-base/persisos
-
 sudo mkdir -p $ROOTFS/usr/share/pixmaps/persisos
 sudo cp persisos.svg $ROOTFS/usr/share/pixmaps/persisos/persisos.svg
 sudo cp persisos.svg $ROOTFS/usr/share/pixmaps/persisos.svg
