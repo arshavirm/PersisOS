@@ -71,7 +71,6 @@ apt install -y --no-install-recommends \
     exo-utils \
     xfce4-panel \
     xfdesktop4 \
-    garcon \
     libgarcon-gtk3-1-0 \
     nano \
     less \
