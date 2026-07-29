@@ -1,32 +1,81 @@
 #!/bin/bash
 
-FLAG="$HOME/.config/persisos-first-login-done"
-WALL="/usr/share/backgrounds/persisos/background_1.png"
+DEFAULT_BG="/usr/share/backgrounds/persisos/background_1.png"
+CHANNEL="xfce4-desktop"
+LOG_TAG="xfce-default-bg"
 
-[ -f "$FLAG" ] && exit 0
+log() {
+    logger -t "$LOG_TAG" "$1" 2>/dev/null
+    echo "[$LOG_TAG] $1"
+}
 
-xfconf-query -c xfce4-desktop -l |
-grep '^/backdrop/screen0/monitor' |
-grep -v '/workspace' |
-while read monitor; do
 
-    PROP="$monitor/workspace0/last-image"
+if ! command -v xfconf-query >/dev/null 2>&1; then
+    log "xfconf-query not found, aborting"
+    exit 1
+fi
 
-    if ! xfconf-query -c xfce4-desktop -p "$PROP" >/dev/null 2>&1; then
-        xfconf-query \
-            -c xfce4-desktop \
-            -p "$PROP" \
-            -n -t string \
-            -s "$WALL"
+if [ ! -f "$DEFAULT_BG" ]; then
+    log "Default background '$DEFAULT_BG' does not exist, aborting"
+    exit 1
+fi
 
-        xfconf-query \
-            -c xfce4-desktop \
-            -p "$monitor/workspace0/image-style" \
-            -n -t int \
-            -s 5
+ready=0
+for _ in $(seq 1 30); do
+    if xfconf-query -c "$CHANNEL" -l >/dev/null 2>&1; then
+        ready=1
+        break
+    fi
+    sleep 1
+done
+
+if [ "$ready" -ne 1 ]; then
+    log "xfce4-desktop channel never became available, aborting"
+    exit 1
+fi
+
+# --- Helper: apply default background to a given property --------------
+
+set_default() {
+    local prop="$1"
+    xfconf-query -c "$CHANNEL" -p "$prop" -n -t string -s "$DEFAULT_BG" 2>/dev/null \
+        || xfconf-query -c "$CHANNEL" -p "$prop" -s "$DEFAULT_BG"
+
+    # Make sure the image is actually shown (image-style 0 = "None")
+    local style_prop="${prop%last-image}image-style"
+    local current_style
+    current_style=$(xfconf-query -c "$CHANNEL" -p "$style_prop" 2>/dev/null)
+    if [ -z "$current_style" ] || [ "$current_style" = "0" ]; then
+        xfconf-query -c "$CHANNEL" -p "$style_prop" -n -t int -s 5 2>/dev/null \
+            || xfconf-query -c "$CHANNEL" -p "$style_prop" -s 5
+    fi
+
+    log "Set '$prop' -> '$DEFAULT_BG'"
+}
+
+mapfile -t IMAGE_PROPS < <(xfconf-query -c "$CHANNEL" -l | grep -E '/backdrop/screen[0-9]+/monitor[^/]+/workspace[0-9]+/last-image$')
+
+for prop in "${IMAGE_PROPS[@]}"; do
+    current_value=$(xfconf-query -c "$CHANNEL" -p "$prop" 2>/dev/null)
+    if [ -z "$current_value" ] || [ ! -f "$current_value" ]; then
+        set_default "$prop"
     fi
 done
 
-xfdesktop --reload
+if command -v xrandr >/dev/null 2>&1; then
+    CONNECTED=$(xrandr --query | awk '/ connected/ {print $1}')
+    for m in $CONNECTED; do
+        found=0
+        for prop in "${IMAGE_PROPS[@]}"; do
+            case "$prop" in
+                *"/monitor${m}/"*) found=1 ;;
+            esac
+        done
+        if [ "$found" -eq 0 ]; then
+            set_default "/backdrop/screen0/monitor${m}/workspace0/last-image"
+        fi
+    done
+fi
 
-touch "$FLAG"
+log "Done."
+exit 0

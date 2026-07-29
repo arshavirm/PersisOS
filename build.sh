@@ -54,6 +54,8 @@ sudo mkdir -p $ROOTFS/persisos_temp
 sudo cp -r assets/xfce4 $ROOTFS/persisos_temp/xfce4
 sudo cp -r assets/calamares $ROOTFS/persisos_temp/calamares
 sudo cp -r assets/grub.cfg $ROOTFS/persisos_temp/grub.cfg
+sudo cp -r assets/plymouth $ROOTFS/persisos_temp/plymouth
+
 
 sudo cp assets/calamares-install-persisos.desktop $ROOTFS/persisos_temp/calamares-install-persisos.desktop
 sudo cp assets/.face $ROOTFS/persisos_temp/.face
