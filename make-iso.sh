@@ -3,6 +3,7 @@ set -e
 
 DISTRO="PersisOS"
 VERSION="1.0"
+ARCH=amd64
 
 WORK="iso"
 OUTPUT="output"
@@ -27,11 +28,11 @@ cp assets/grub.cfg "$WORK/boot/grub/grub.cfg"
 echo "Building ISO..."
 
 grub-mkrescue \
-    --compress=xz \
-    -o "$OUTPUT/${DISTRO}-${VERSION}.iso" \
+    --compress=7z \
+    -o "$OUTPUT/${DISTRO}-${VERSION}-${ARCH}.iso" \
     "$WORK"
 
 echo
 echo "Done!"
 echo "ISO written to:"
-echo "  $OUTPUT/${DISTRO}-${VERSION}.iso"
+echo "  $OUTPUT/${DISTRO}-${VERSION}-${ARCH}.iso"
