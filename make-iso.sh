@@ -28,7 +28,7 @@ cp assets/grub.cfg "$WORK/boot/grub/grub.cfg"
 echo "Building ISO..."
 
 grub-mkrescue \
-    --compress=7z \
+    --compress=xz \
     -o "$OUTPUT/${DISTRO}-${VERSION}-${ARCH}.iso" \
     "$WORK"
 
