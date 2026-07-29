@@ -78,7 +78,7 @@ cp -r /persisos_temp/xfce4/. /etc/skel/.config/xfce4/
 cp -r /persisos_temp/xfce4/. /root/.config/xfce4/
 
 mkdir -p /usr/share/plymouth/themes/persisos
-cp -r /persisos_temp/plymouth/persisos /usr/share/plymouth/themes/persisos
+cp -r /persisos_temp/plymouth/persisos/. /usr/share/plymouth/themes/persisos
 
 plymouth-set-default-theme -R persisos
 
