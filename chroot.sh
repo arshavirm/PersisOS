@@ -9,6 +9,8 @@ apt-get update
 
 apt-get install -y \
     firmware-linux \
+    firmware-linux-free \
+    firmware-linux-nonfree \
     firmware-misc-nonfree \
     linux-image-amd64 \
     live-boot \
