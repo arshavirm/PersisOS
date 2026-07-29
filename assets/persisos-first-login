@@ -1,0 +1,21 @@
+#!/bin/bash
+
+FLAG="$HOME/.config/persisos-first-login-done"
+
+if [ -f "$FLAG" ]; then
+    exit 0
+fi
+
+xfconf-query \
+    -c xfce4-desktop \
+    -p /backdrop/screen0/monitor0/workspace0/last-image \
+    -s /usr/share/backgrounds/persisos/background_1.png
+
+xfconf-query \
+    -c xfce4-desktop \
+    -p /backdrop/screen0/monitor0/workspace0/image-style \
+    -s 5
+
+xfdesktop --reload
+
+touch "$FLAG"

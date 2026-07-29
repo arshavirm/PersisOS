@@ -84,6 +84,7 @@ cp -r /persisos_temp/calamares/packages.conf /etc/calamares/modules/packages.con
 cp -r /persisos_temp/calamares/packagechooser.conf /etc/calamares/modules/packagechooser.conf
 
 rm -f /usr/share/applications/calamares*.desktop
+rm -f /etc/xdg/autostart/calamares*.desktop
 install -Dm644 /persisos_temp/calamares-install-persisos.desktop \
     /usr/share/applications/calamares-install-persisos.desktop
 update-desktop-database /usr/share/applications || true
@@ -97,6 +98,10 @@ install -Dm644 /persisos_temp/.face /etc/skel/.face
 install -Dm644 /persisos_temp/.face /root/.face
 
 install -Dm644 /persisos_temp/lightdm-gtk-greeter.conf /etc/lightdm/lightdm-gtk-greeter.conf
+
+install -Dm644 /persisos_temp/persisos-first-login /usr/local/bin/persisos-first-login
+chmod +x /usr/local/bin/persisos-first-login
+install -Dm644 /persisos_temp/persisos-first-login.desktop /etc/xdg/autostart/persisos-first-login.desktop
 
 useradd \
     --create-home \

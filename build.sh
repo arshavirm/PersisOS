@@ -58,6 +58,9 @@ sudo cp -r assets/grub.cfg $ROOTFS/persisos_temp/grub.cfg
 sudo cp assets/calamares-install-persisos.desktop $ROOTFS/persisos_temp/calamares-install-persisos.desktop
 sudo cp assets/.face $ROOTFS/persisos_temp/.face
 sudo cp assets/lightdm-gtk-greeter.conf $ROOTFS/persisos_temp/lightdm-gtk-greeter.conf
+sudo cp assets/persisos-first-login $ROOTFS/persisos_temp/persisos-first-login
+sudo cp assets/persisos-first-login.desktop $ROOTFS/persisos_temp/persisos-first-login.desktop
+
 
 sudo cp assets/gtk.css $ROOTFS/persisos_temp/gtk.css
 
