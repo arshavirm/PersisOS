@@ -1,20 +1,31 @@
 #!/bin/bash
 
 FLAG="$HOME/.config/persisos-first-login-done"
+WALL="/usr/share/backgrounds/persisos/background_1.png"
 
-if [ -f "$FLAG" ]; then
-    exit 0
-fi
+[ -f "$FLAG" ] && exit 0
 
-xfconf-query \
-    -c xfce4-desktop \
-    -p /backdrop/screen0/monitor0/workspace0/last-image \
-    -s /usr/share/backgrounds/persisos/background_1.png
+xfconf-query -c xfce4-desktop -l |
+grep '^/backdrop/screen0/monitor' |
+grep -v '/workspace' |
+while read monitor; do
 
-xfconf-query \
-    -c xfce4-desktop \
-    -p /backdrop/screen0/monitor0/workspace0/image-style \
-    -s 5
+    PROP="$monitor/workspace0/last-image"
+
+    if ! xfconf-query -c xfce4-desktop -p "$PROP" >/dev/null 2>&1; then
+        xfconf-query \
+            -c xfce4-desktop \
+            -p "$PROP" \
+            -n -t string \
+            -s "$WALL"
+
+        xfconf-query \
+            -c xfce4-desktop \
+            -p "$monitor/workspace0/image-style" \
+            -n -t int \
+            -s 5
+    fi
+done
 
 xfdesktop --reload
 
