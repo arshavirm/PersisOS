@@ -2,7 +2,7 @@
 <channel name="xfce4-desktop" version="1.0">
   <property name="backdrop" type="empty">
     <property name="screen0" type="empty">
-      <property name="monitoreDP-1" type="empty">
+      <property name="monitor0" type="empty">
         <property name="workspace0" type="empty">
           <property name="last-image" type="string" value="/usr/share/backgrounds/persisos/background_1.png"/>
           <property name="image-style" type="int" value="5"/>
