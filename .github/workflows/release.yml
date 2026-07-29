@@ -29,7 +29,7 @@ jobs:
           sudo ./make-iso.sh
           ls output -lh         
 
-      - name: Upload .deb and binary to the release
+      - name: Upload ISO to the release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
