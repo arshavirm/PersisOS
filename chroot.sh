@@ -27,7 +27,6 @@ apt-get install -y \
     iw \
     rfkill \
     modemmanager \
-    xfce-polkit \
     avahi-daemon \
     avahi-utils \
     libnss-mdns \
