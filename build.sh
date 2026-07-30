@@ -6,10 +6,6 @@ ARCH="${ARCH:-amd64}"
 ROOTFS="${ROOTFS:-rootfs}"
 MIRROR="${MIRROR:-http://deb.debian.org/debian}"
 
-if [[ $EUID -eq 0 ]]; then
-    echo "Please run this script as a normal user — it calls sudo itself when needed." >&2
-    exit 1
-fi
 
 cleanup_mounts() {
     local m
