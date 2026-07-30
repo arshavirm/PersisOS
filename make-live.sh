@@ -17,9 +17,6 @@ sudo touch "$ROOTFS/etc/machine-id"
 
 echo "Creating SquashFS..."
 
-# memtest86 binaries are copied out of rootfs/boot separately below and only
-# ever needed on the ISO itself, so there's no need to ship them inside the
-# live filesystem too.
 sudo mksquashfs \
     "$ROOTFS" \
     "$LIVE/live/filesystem.squashfs" \
@@ -30,8 +27,6 @@ sudo mksquashfs \
 
 echo "Copying kernel..."
 
-# Pick the newest kernel/initrd if more than one is installed, instead of
-# letting a bare glob silently grab whichever one sorts last.
 KERNEL="$(sudo find "$ROOTFS/boot" -maxdepth 1 -name 'vmlinuz-*' | sort -V | tail -n1)"
 if [ -z "$KERNEL" ]; then
     echo "Error: no vmlinuz-* found in $ROOTFS/boot" >&2
