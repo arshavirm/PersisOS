@@ -23,6 +23,7 @@ apt-get install -y \
     systemd-sysv \
     network-manager \
     network-manager-gnome \
+    cmst \
     wpasupplicant \
     iw \
     rfkill \

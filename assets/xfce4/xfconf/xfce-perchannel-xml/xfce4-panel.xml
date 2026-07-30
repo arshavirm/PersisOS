@@ -19,7 +19,7 @@
         <value type="int" value="5"/>
         <value type="int" value="13"/>
         <value type="int" value="15"/>
-        <value type="int" value="1"/>
+        <value type="int" value="16"/>
         <value type="int" value="7"/>
         <value type="int" value="8"/>
         <value type="int" value="9"/>
@@ -69,12 +69,20 @@
     <property name="plugin-15" type="string" value="separator">
       <property name="style" type="uint" value="0"/>
     </property>
-    <property name="plugin-1" type="string" value="wavelan"/>
+    <property name="plugin-1" type="empty"/>
     <property name="plugin-6" type="string" value="whiskermenu">
       <property name="button-icon" type="string" value="/usr/share/pixmaps/persisos.svg"/>
       <property name="profile-shape" type="int" value="0"/>
       <property name="recent" type="array">
+        <value type="string" value="cmst.desktop"/>
+        <value type="string" value="connman-gtk.desktop"/>
         <value type="string" value="apadana.desktop"/>
+        <value type="string" value="gnome-nettool.desktop"/>
+      </property>
+    </property>
+    <property name="plugin-16" type="string" value="launcher">
+      <property name="items" type="array">
+        <value type="string" value="17854316311.desktop"/>
       </property>
     </property>
   </property>
