@@ -42,6 +42,7 @@ apt-get install -y \
     pavucontrol \
     wireless-regdb \
     network-manager-iwd \
+    nm-tray \
     iw \
     wget \
     p7zip-full \
