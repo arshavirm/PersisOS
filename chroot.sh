@@ -19,11 +19,10 @@ apt-get install -y \
     grub2 \
     memtest86+ \
     shim-signed \
+    systemd \
     systemd-sysv \
     dosfstools \
     sudo \
-    network-manager \
-    network-manager-gnome \
     xorg \
     lightdm \
     lightdm-gtk-greeter \
@@ -41,9 +40,6 @@ apt-get install -y \
     libspa-0.2-bluetooth \
     pavucontrol \
     wireless-regdb \
-    network-manager-iwd \
-    nm-tray \
-    iw \
     wget \
     p7zip-full \
     zip \
