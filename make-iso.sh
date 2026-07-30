@@ -1,9 +1,9 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 DISTRO="PersisOS"
 VERSION="1.0"
-ARCH=amd64
+ARCH="amd64"
 
 WORK="iso"
 OUTPUT="output"
@@ -18,9 +18,13 @@ cp live/live/filesystem.squashfs "$WORK/live/"
 cp live/vmlinuz "$WORK/live/"
 cp live/initrd "$WORK/live/"
 
-cp live/memtest86*.efi "$WORK/boot/"
-cp live/memtest86*.bin "$WORK/boot/"
-
+for f in live/memtest86*.efi live/memtest86*.bin; do
+    if [ -e "$f" ]; then
+        cp "$f" "$WORK/boot/"
+    else
+        echo "Warning: $f not found, skipping" >&2
+    fi
+done
 
 echo "Copying GRUB configuration..."
 cp assets/grub.cfg "$WORK/boot/grub/grub.cfg"

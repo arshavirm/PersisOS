@@ -21,6 +21,16 @@ apt-get install -y \
     shim-signed \
     systemd \
     systemd-sysv \
+    network-manager \
+    network-manager-gnome \
+    wpasupplicant \
+    iw \
+    rfkill \
+    modemmanager \
+    xfce-polkit \
+    avahi-daemon \
+    avahi-utils \
+    libnss-mdns \
     dosfstools \
     sudo \
     xorg \
@@ -70,7 +80,6 @@ cat > /etc/hosts <<EOF
 127.0.1.1 PersisOS
 EOF
 
-
 mkdir -p /etc/xdg/xfce4 /etc/skel/.config/xfce4 /root/.config/xfce4
 cp -r /persisos_temp/xfce4/. /etc/xdg/xfce4/
 cp -r /persisos_temp/xfce4/. /etc/skel/.config/xfce4/
@@ -81,6 +90,34 @@ cp -r /persisos_temp/plymouth/persisos/. /usr/share/plymouth/themes/persisos
 
 plymouth-set-default-theme -R persisos
 
+mkdir -p /etc/NetworkManager/conf.d
+cat > /etc/NetworkManager/conf.d/10-globally-managed-devices.conf <<EOF
+[ifupdown]
+managed=true
+EOF
+
+cat > /etc/network/interfaces <<EOF
+auto lo
+iface lo inet loopback
+EOF
+
+mkdir -p /etc/xdg/autostart
+if [ ! -f /etc/xdg/autostart/nm-applet.desktop ]; then
+    found="$(dpkg -L network-manager-gnome | grep -m1 'nm-applet\.desktop$' || true)"
+    if [ -n "$found" ]; then
+        install -Dm644 "$found" /etc/xdg/autostart/nm-applet.desktop
+    fi
+fi
+
+mkdir -p /etc/polkit-1/rules.d
+cat > /etc/polkit-1/rules.d/50-netdev-networkmanager.rules <<'EOF'
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 &&
+        subject.isInGroup("netdev")) {
+        return polkit.Result.YES;
+    }
+});
+EOF
 
 mkdir -p /etc/calamares/branding
 cp -r /persisos_temp/calamares/persisos /etc/calamares/branding/persisos
@@ -111,7 +148,7 @@ install -Dm644 /persisos_temp/persisos-first-login.desktop /etc/xdg/autostart/pe
 useradd \
     --create-home \
     --shell /bin/bash \
-    --groups sudo \
+    --groups sudo,netdev \
     user
 
 echo "user:user" | chpasswd
@@ -128,5 +165,4 @@ apt-get clean
 
 rm -rf /persisos_temp
 
-apt-get update
 update-initramfs -u -k all
