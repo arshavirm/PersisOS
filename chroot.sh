@@ -111,6 +111,11 @@ auto lo
 iface lo inet loopback
 EOF
 
+cat > /etc/apt/apt.conf.d/99parallel <<EOF
+Acquire::Queue-Host-Limit "6";
+Acquire::http::Pipeline-Depth "10";
+EOF
+
 mkdir -p /etc/xdg/autostart
 if [ ! -f /etc/xdg/autostart/nm-applet.desktop ]; then
     found="$(dpkg -L network-manager-gnome | grep -m1 'nm-applet\.desktop$' || true)"
@@ -145,6 +150,23 @@ install -Dm644 /persisos_temp/gtk.css /etc/skel/.themes/Persis/gtk-3.0/gtk.css
 install -Dm644 /persisos_temp/gtk.css /root/.themes/Persis/gtk-3.0/gtk.css
 
 install -Dm644 /persisos_temp/grub.cfg /boot/grub/grub.cfg
+
+if grep -q '^GRUB_BACKGROUND=' /etc/default/grub; then
+    sed -i 's|^GRUB_BACKGROUND=.*|GRUB_BACKGROUND="/usr/share/backgrounds/persisos/background_2.png"|' /etc/default/grub
+else
+    echo 'GRUB_BACKGROUND="/usr/share/backgrounds/persisos/background_2.png"' >> /etc/default/grub
+fi
+ 
+if grep -q '^GRUB_TERMINAL_OUTPUT=' /etc/default/grub; then
+    sed -i 's|^GRUB_TERMINAL_OUTPUT=.*|GRUB_TERMINAL_OUTPUT="gfxterm"|' /etc/default/grub
+else
+    echo 'GRUB_TERMINAL_OUTPUT="gfxterm"' >> /etc/default/grub
+fi
+ 
+if ! grep -q '^GRUB_GFXMODE=' /etc/default/grub; then
+    echo 'GRUB_GFXMODE="auto"' >> /etc/default/grub
+fi
+
 
 install -Dm644 /persisos_temp/.face /etc/skel/.face
 install -Dm644 /persisos_temp/.face /root/.face
