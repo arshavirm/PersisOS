@@ -12,6 +12,11 @@ apt-get install -y \
     firmware-linux-free \
     firmware-linux-nonfree \
     firmware-misc-nonfree \
+    firmware-realtek \
+    firmware-atheros \
+    firmware-iwlwifi \
+    firmware-brcm80211 \
+    firmware-mediatek \
     linux-image-amd64 \
     live-boot \
     live-config \
@@ -23,14 +28,10 @@ apt-get install -y \
     systemd-sysv \
     network-manager \
     network-manager-gnome \
-    cmst \
     wpasupplicant \
     iw \
     rfkill \
-    modemmanager \
-    avahi-daemon \
-    avahi-utils \
-    libnss-mdns \
+    wireless-regdb \
     dosfstools \
     sudo \
     xorg \
@@ -40,6 +41,11 @@ apt-get install -y \
     xfce4-goodies \
     thunar-archive-plugin \
     thunar-volman \
+    gvfs \
+    gvfs-backends \
+    udisks2 \
+    xdg-user-dirs \
+    xdg-user-dirs-gtk \
     ristretto \
     mousepad \
     evince \
@@ -47,9 +53,7 @@ apt-get install -y \
     pipewire-pulse \
     wireplumber \
     alsa-utils \
-    libspa-0.2-bluetooth \
     pavucontrol \
-    wireless-regdb \
     wget \
     p7zip-full \
     zip \
@@ -94,6 +98,12 @@ mkdir -p /etc/NetworkManager/conf.d
 cat > /etc/NetworkManager/conf.d/10-globally-managed-devices.conf <<EOF
 [ifupdown]
 managed=true
+EOF
+
+mkdir -p /etc/systemd/system/NetworkManager.service.d
+cat > /etc/systemd/system/NetworkManager.service.d/10-rfkill-unblock.conf <<EOF
+[Service]
+ExecStartPre=/usr/sbin/rfkill unblock all
 EOF
 
 cat > /etc/network/interfaces <<EOF
