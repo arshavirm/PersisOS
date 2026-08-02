@@ -225,6 +225,11 @@
     "_comment_hooks": "Arbitrary shell scripts run at named extension points.",
     "hooks": [
         {
+            "name": "exclude-desktop-base",
+            "point": "chroot:after_update",
+            "script": "cat > /etc/apt/preferences.d/99-skip-desktop-base <<'EOF'\nPackage: desktop-base\nPin: release *\nPin-Priority: -1\nEOF"
+        },
+        {
             "name": "install-apadana",
             "point": "chroot:after_packages",
             "enabled": true,

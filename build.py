@@ -22,16 +22,6 @@ Examples:
     sudo python3 build.py -s rootfs
     sudo python3 build.py -s live,iso
     python3 build.py --list-hook-points
-
-GitHub Actions:
-    Always pass -y/--yes in CI -- there's no stdin to confirm prompts with.
-    When run as a workflow step (GITHUB_ACTIONS=true), each stage is wrapped
-    in a collapsible ::group::, warnings/fatal errors are also emitted as
-    ::warning::/::error:: annotations, and after the iso stage the ISO's
-    path/name/sha256/size are appended to $GITHUB_OUTPUT (as step outputs
-    iso_path, iso_name, iso_sha256, iso_size_bytes) and a short summary
-    table is appended to $GITHUB_STEP_SUMMARY -- both no-ops if those env
-    vars aren't set. See the example workflow in .github/workflows/.
 """
 
 from __future__ import annotations
