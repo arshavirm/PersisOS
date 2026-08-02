@@ -8,7 +8,12 @@
         "dist": "stable",
         "arch": "amd64",
         "mirror": "http://deb.debian.org/debian",
-        "components": ["main", "contrib", "non-free", "non-free-firmware"],
+        "components": [
+            "main",
+            "contrib",
+            "non-free",
+            "non-free-firmware"
+        ],
         "extra_apt_sources": []
     },
     "paths": {
@@ -20,13 +25,18 @@
     },
     "accounts": {
         "root_password": "root",
-        "users": [{
-            "username": "user",
-            "password": "user",
-            "shell": "/bin/bash",
-            "groups": ["sudo", "netdev"],
-            "create_home": true
-        }]
+        "users": [
+            {
+                "username": "user",
+                "password": "user",
+                "shell": "/bin/bash",
+                "groups": [
+                    "sudo",
+                    "netdev"
+                ],
+                "create_home": true
+            }
+        ]
     },
     "boot": {
         "plymouth_theme": "persisos"
@@ -41,7 +51,9 @@
     "squashfs": {
         "comp": "xz",
         "block_size": "1M",
-        "exclude_wildcards": ["boot/memtest86*"]
+        "exclude_wildcards": [
+            "boot/memtest86*"
+        ]
     },
     "chroot_finalize": {
         "machine_id_setup": true,
@@ -52,51 +64,163 @@
     "packages": {
         "groups": {
             "firmware": [
-                "firmware-linux", "firmware-linux-free", "firmware-linux-nonfree",
-                "firmware-misc-nonfree", "firmware-realtek", "firmware-atheros",
-                "firmware-iwlwifi", "firmware-brcm80211", "firmware-mediatek",
-                "linux-image-amd64", "live-boot", "live-config", "live-config-systemd",
-                "grub2", "memtest86+", "shim-signed", "systemd", "systemd-sysv"
+                "firmware-linux",
+                "firmware-linux-free",
+                "firmware-linux-nonfree",
+                "firmware-misc-nonfree",
+                "firmware-realtek",
+                "firmware-atheros",
+                "firmware-iwlwifi",
+                "firmware-brcm80211",
+                "firmware-mediatek",
+                "linux-image-amd64",
+                "live-boot",
+                "live-config",
+                "live-config-systemd",
+                "grub2",
+                "memtest86+",
+                "shim-signed",
+                "systemd",
+                "systemd-sysv"
             ],
-            "network": ["network-manager", "wpasupplicant", "iw", "rfkill", "wireless-regdb"],
-            "desktop": ["xorg", "sddm", "kde-plasma-desktop", "plasma-nm", "plasma-pa"],
+            "network": [
+                "network-manager",
+                "wpasupplicant",
+                "iw",
+                "rfkill",
+                "wireless-regdb"
+            ],
+            "desktop": [
+                "xorg",
+                "sddm",
+                "kde-plasma-desktop",
+                "plasma-nm",
+                "plasma-pa"
+            ],
             "apps": [
-                "pipewire", "pipewire-pulse", "wireplumber", "alsa-utils", "wget",
-                "p7zip-full", "zip", "unzip", "usbutils", "pciutils", "librsvg2-common",
-                "dosfstools", "sudo"
+                "pipewire",
+                "pipewire-pulse",
+                "wireplumber",
+                "alsa-utils",
+                "wget",
+                "p7zip-full",
+                "zip",
+                "unzip",
+                "usbutils",
+                "pciutils",
+                "librsvg2-common",
+                "dosfstools",
+                "sudo"
             ],
-            "installer": ["calamares", "calamares-settings-debian"]
+            "installer": [
+                "calamares",
+                "calamares-settings-debian"
+            ]
         },
         "extra": []
     },
-    "services": ["sddm", "NetworkManager", "avahi-daemon"],
+    "services": [
+        "sddm",
+        "NetworkManager",
+        "avahi-daemon"
+    ],
     "files": [
-        {"src": "assets/backgrounds", "dest": "usr/share/backgrounds/persisos", "type": "dir", "stage": "before_chroot"},
-        {"src": "persisos.svg", "dest": "usr/share/pixmaps/persisos/persisos.svg", "stage": "before_chroot", "mode": "644"},
-        {"src": "persisos.svg", "dest": "usr/share/pixmaps/persisos.svg", "stage": "before_chroot", "mode": "644"},
-        {"src": "assets/os-release", "dest": "etc/os-release", "stage": "before_chroot", "mode": "644"},
-        {"src": "assets/os-release", "dest": "usr/lib/os-release", "stage": "before_chroot", "mode": "644"},
-        {"src": "assets/plymouth/persisos", "dest": "usr/share/plymouth/themes/persisos", "type": "dir", "stage": "before_chroot"},
-        {"src": "assets/.face", "dest": "etc/skel/.face", "stage": "before_chroot", "mode": "644"},
-        {"src": "assets/.face", "dest": "root/.face", "stage": "before_chroot", "mode": "644"},
-        {"src": "assets/calamares/persisos", "dest": "etc/calamares/branding/persisos", "type": "dir", "stage": "after_chroot"},
-        {"src": "assets/calamares/settings.conf", "dest": "etc/calamares/settings.conf", "stage": "after_chroot", "mode": "644"},
-        {"src": "assets/calamares/packages.conf", "dest": "etc/calamares/modules/packages.conf", "stage": "after_chroot", "mode": "644"},
-        {"src": "assets/calamares/packagechooser.conf", "dest": "etc/calamares/modules/packagechooser.conf", "stage": "after_chroot", "mode": "644"},
-        {"src": "assets/calamares-install-persisos.desktop", "dest": "usr/share/applications/calamares-install-persisos.desktop", "stage": "after_chroot", "mode": "644"},
-        {"src": "assets/grub.cfg", "dest": "boot/grub/grub.cfg", "stage": "after_chroot", "mode": "644"},
-        {"src": "assets/persisos-first-login", "dest": "usr/local/bin/persisos-first-login", "stage": "after_chroot", "mode": "755"}
+        {
+            "src": "assets/backgrounds",
+            "dest": "usr/share/backgrounds/persisos",
+            "type": "dir",
+            "stage": "before_chroot"
+        },
+        {
+            "src": "persisos.svg",
+            "dest": "usr/share/pixmaps/persisos/persisos.svg",
+            "stage": "before_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "persisos.svg",
+            "dest": "usr/share/pixmaps/persisos.svg",
+            "stage": "before_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/os-release",
+            "dest": "etc/os-release",
+            "stage": "before_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/os-release",
+            "dest": "usr/lib/os-release",
+            "stage": "before_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/plymouth/persisos",
+            "dest": "usr/share/plymouth/themes/persisos",
+            "type": "dir",
+            "stage": "before_chroot"
+        },
+        {
+            "src": "assets/.face",
+            "dest": "etc/skel/.face",
+            "stage": "before_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/.face",
+            "dest": "root/.face",
+            "stage": "before_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/calamares/persisos",
+            "dest": "etc/calamares/branding/persisos",
+            "type": "dir",
+            "stage": "after_chroot"
+        },
+        {
+            "src": "assets/calamares/settings.conf",
+            "dest": "etc/calamares/settings.conf",
+            "stage": "after_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/calamares/packages.conf",
+            "dest": "etc/calamares/modules/packages.conf",
+            "stage": "after_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/calamares/packagechooser.conf",
+            "dest": "etc/calamares/modules/packagechooser.conf",
+            "stage": "after_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/calamares-install-persisos.desktop",
+            "dest": "usr/share/applications/calamares-install-persisos.desktop",
+            "stage": "after_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/grub.cfg",
+            "dest": "boot/grub/grub.cfg",
+            "stage": "after_chroot",
+            "mode": "644"
+        },
+        {
+            "src": "assets/persisos-first-login",
+            "dest": "usr/local/bin/persisos-first-login",
+            "stage": "after_chroot",
+            "mode": "755"
+        }
     ],
     "cleanup_globs": [
         "usr/share/applications/calamares*.desktop",
         "etc/xdg/autostart/calamares*.desktop"
     ],
     "hooks": [
-        {
-            "name": "exclude-desktop-base",
-            "point": "chroot:after_update",
-            "script": "cat > /etc/apt/preferences.d/99-skip-desktop-base <<'EOF'\nPackage: desktop-base\nPin: release *\nPin-Priority: -1\nEOF"
-        },
         {
             "name": "install-apadana",
             "point": "chroot:after_packages",
