@@ -22,12 +22,24 @@ Examples:
     sudo python3 build.py -s rootfs
     sudo python3 build.py -s live,iso
     python3 build.py --list-hook-points
+
+GitHub Actions:
+    Always pass -y/--yes in CI -- there's no stdin to confirm prompts with.
+    When run as a workflow step (GITHUB_ACTIONS=true), each stage is wrapped
+    in a collapsible ::group::, warnings/fatal errors are also emitted as
+    ::warning::/::error:: annotations, and after the iso stage the ISO's
+    path/name/sha256/size are appended to $GITHUB_OUTPUT (as step outputs
+    iso_path, iso_name, iso_sha256, iso_size_bytes) and a short summary
+    table is appended to $GITHUB_STEP_SUMMARY -- both no-ops if those env
+    vars aren't set. See the example workflow in .github/workflows/.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import glob
+import hashlib
 import json
 import os
 import shlex
@@ -42,7 +54,8 @@ from pathlib import Path
 # logging
 # --------------------------------------------------------------------------- #
 
-_COLOR = sys.stdout.isatty()
+IS_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
+_COLOR = sys.stdout.isatty() or IS_GITHUB_ACTIONS
 
 
 def _c(code: str, msg: str) -> str:
@@ -54,6 +67,8 @@ def log_info(msg: str) -> None:
 
 
 def log_warn(msg: str) -> None:
+    if IS_GITHUB_ACTIONS:
+        print(f"::warning::{msg}")
     print(f"{_c('1;33', '[WARN]')} {msg}", file=sys.stderr)
 
 
@@ -62,8 +77,22 @@ def log_ok(msg: str) -> None:
 
 
 def die(msg: str) -> None:
+    if IS_GITHUB_ACTIONS:
+        print(f"::error::{msg}")
     print(f"{_c('1;31', '[ERROR]')} {msg}", file=sys.stderr)
     sys.exit(1)
+
+
+@contextlib.contextmanager
+def gh_group(title: str):
+    """Collapsible log group in the GitHub Actions UI; a no-op elsewhere."""
+    if IS_GITHUB_ACTIONS:
+        print(f"::group::{title}")
+    try:
+        yield
+    finally:
+        if IS_GITHUB_ACTIONS:
+            print("::endgroup::")
 
 
 # --------------------------------------------------------------------------- #
@@ -114,7 +143,13 @@ def is_mounted(path: Path) -> bool:
 def confirm_or_die(prompt: str, assume_yes: bool) -> None:
     if assume_yes:
         return
-    reply = input(f"{prompt} [y/N] ")
+    try:
+        reply = input(f"{prompt} [y/N] ")
+    except EOFError:
+        die(
+            f"{prompt} -- no input available (non-interactive shell). Re-run with --yes/-y (this is required in CI)."
+        )
+        return
     if reply.strip().lower() != "y":
         die("Aborted by user.")
 
@@ -584,6 +619,52 @@ def stage_live(cfg: Config, assume_yes: bool) -> None:
     log_ok(f"Live filesystem complete: {cfg.live_dir}")
 
 
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def write_github_integration(cfg: Config, iso_path: Path) -> None:
+    """If running as a GitHub Actions step, expose the ISO as step outputs
+    (iso_path, iso_name, iso_sha256, iso_size_bytes) so later steps -- e.g.
+    actions/upload-artifact or a release step -- can reference it directly,
+    and append a short build summary to the job's Summary tab. No-op outside
+    of GitHub Actions (GITHUB_OUTPUT / GITHUB_STEP_SUMMARY unset)."""
+    gh_output = os.environ.get("GITHUB_OUTPUT")
+    gh_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not gh_output and not gh_summary:
+        return
+
+    size_bytes = iso_path.stat().st_size
+    log_info("Computing SHA-256 checksum...")
+    sha256 = _sha256_file(iso_path)
+    log_info(f"SHA-256: {sha256}")
+
+    if gh_output:
+        with open(gh_output, "a") as f:
+            f.write(f"iso_path={iso_path}\n")
+            f.write(f"iso_name={iso_path.name}\n")
+            f.write(f"iso_sha256={sha256}\n")
+            f.write(f"iso_size_bytes={size_bytes}\n")
+
+    if gh_summary:
+        d = cfg.data["distro"]
+        with open(gh_summary, "a") as f:
+            f.write(textwrap.dedent(f"""\
+                ## Build summary: {d['name']} {d['version']}
+
+                | | |
+                |---|---|
+                | Arch | `{cfg.data['debian']['arch']}` |
+                | ISO | `{iso_path.name}` |
+                | Size | {size_bytes / (1024 ** 2):.1f} MiB |
+                | SHA-256 | `{sha256}` |
+                """))
+
+
 def stage_iso(cfg: Config) -> None:
     log_info("=== Stage 3/3: ISO ===")
     squashfs = cfg.live_dir / "live/filesystem.squashfs"
@@ -619,6 +700,7 @@ def stage_iso(cfg: Config) -> None:
 
     run_host_hooks(cfg, "host:after_iso")
     log_ok(f"ISO written to: {iso_path}")
+    write_github_integration(cfg, iso_path)
 
 
 # --------------------------------------------------------------------------- #
@@ -724,11 +806,14 @@ def main() -> None:
 
     start = time.time()
     if "rootfs" in stages:
-        stage_rootfs(cfg, args.yes)
+        with gh_group("Stage: rootfs"):
+            stage_rootfs(cfg, args.yes)
     if "live" in stages:
-        stage_live(cfg, args.yes)
+        with gh_group("Stage: live"):
+            stage_live(cfg, args.yes)
     if "iso" in stages:
-        stage_iso(cfg)
+        with gh_group("Stage: iso"):
+            stage_iso(cfg)
 
     log_ok(
         f"Done in {time.time() - start:.0f}s. Stages run: {', '.join(sorted(stages))}"

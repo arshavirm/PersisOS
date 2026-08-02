@@ -92,16 +92,16 @@
             ],
             "desktop": [
                 "xorg",
-                "lightdm",
-                "lightdm-gtk-greeter",
-                "kde-plasma-desktop"
+                "sddm",
+                "kde-plasma-desktop",
+                "plasma-nm",
+                "plasma-pa"
             ],
             "apps": [
                 "pipewire",
                 "pipewire-pulse",
                 "wireplumber",
                 "alsa-utils",
-                "pavucontrol",
                 "wget",
                 "p7zip-full",
                 "zip",
@@ -120,7 +120,7 @@
         "extra": []
     },
     "services": [
-        "lightdm",
+        "sddm",
         "NetworkManager",
         "avahi-daemon"
     ],
@@ -207,12 +207,6 @@
         {
             "src": "assets/grub.cfg",
             "dest": "boot/grub/grub.cfg",
-            "stage": "after_chroot",
-            "mode": "644"
-        },
-        {
-            "src": "assets/lightdm-gtk-greeter.conf",
-            "dest": "etc/lightdm/lightdm-gtk-greeter.conf",
             "stage": "after_chroot",
             "mode": "644"
         },

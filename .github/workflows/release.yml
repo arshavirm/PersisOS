@@ -19,7 +19,7 @@ jobs:
 
       - name: Build Process
         run: |
-          sudo python3 build.py
+          sudo python3 build.py -y
 
       - name: Upload ISO to the release
         uses: softprops/action-gh-release@v2

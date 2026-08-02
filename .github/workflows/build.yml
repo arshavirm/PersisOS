@@ -14,7 +14,7 @@ jobs:
 
       - name: Build Process
         run: |
-          sudo python3 build.py
+          sudo python3 build.py -y
        
       - name: Upload ISO
         uses: actions/upload-artifact@v4
