@@ -85,7 +85,6 @@
             ],
             "network": [
                 "network-manager",
-                "network-manager-gnome",
                 "wpasupplicant",
                 "iw",
                 "rfkill",
