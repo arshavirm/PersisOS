@@ -275,12 +275,14 @@ stage_build_rootfs() {
     mkdir -p "${ROOTFS_DIR}/proc"
     mkdir -p "${ROOTFS_DIR}/sys"
     mkdir -p "${ROOTFS_DIR}/run"
+    mkdir -p "${ROOTFS_DIR}/run/systemd/system"
     
     run mount --bind /dev "${ROOTFS_DIR}/dev"
     run mount --bind /dev/pts "${ROOTFS_DIR}/dev/pts"
     run mount -t proc proc "${ROOTFS_DIR}/proc"
     run mount -t sysfs sys "${ROOTFS_DIR}/sys"
     run mount -t tmpfs tmpfs "${ROOTFS_DIR}/run"
+    run mount --bind /run/systemd/system "${ROOTFS_DIR}/run/systemd/system"
     
     # Copy before-chroot files
     copy_asset_files
