@@ -125,7 +125,6 @@
         "NetworkManager",
         "avahi-daemon"
     ],
-    "_comment_files": "Each entry copies src (relative to the project dir) to dest (relative to the rootfs root). stage='before_chroot' runs before the chroot script (packages, users, etc.) executes; 'after_chroot' runs after, so package-owned conffiles (calamares, grub) aren't clobbered by dpkg. type is 'dir' or 'file'; inferred from the source if omitted. mode is an optional octal permission string.",
     "files": [
         {
             "src": "assets/backgrounds",
