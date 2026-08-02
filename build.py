@@ -1,821 +1,433 @@
 #!/usr/bin/env python3
 """
-Stages (run in order by default, selectable with --stages):
-    rootfs  debootstrap a base system, install packages in a chroot, apply
-            branding/config from the file manifest, run configured hooks
-    live    squash the rootfs into a live filesystem, stage kernel/initrd
-    iso     assemble a bootable ISO with GRUB
+Simple ISO build script for Debian-based live systems.
 
-Usage:
-    sudo python3 build.py [options]
-
-Options:
-    -c, --config FILE     Path to config file (default: ./config.json)
-    -s, --stages LIST     Comma-separated: rootfs,live,iso (default: all)
-    -y, --yes             Don't prompt before removing existing directories
-        --list-hook-points  Print all valid hook 'point' values and exit
-    -h, --help             Show this help
-
-Examples:
-    sudo python3 build.py
-    sudo python3 build.py -c variant.json
-    sudo python3 build.py -s rootfs
-    sudo python3 build.py -s live,iso
-    python3 build.py --list-hook-points
+Usage: sudo python3 build.py [config.json]
 """
 
-from __future__ import annotations
-
-import argparse
-import contextlib
-import glob
-import hashlib
 import json
 import os
-import shlex
 import shutil
 import subprocess
 import sys
-import textwrap
-import time
 from pathlib import Path
 
-# --------------------------------------------------------------------------- #
-# logging
-# --------------------------------------------------------------------------- #
+# Load configuration
+config_file = sys.argv[1] if len(sys.argv) > 1 else "config.json"
+with open(config_file) as f:
+    cfg = json.load(f)
 
-IS_GITHUB_ACTIONS = os.environ.get("GITHUB_ACTIONS") == "true"
-_COLOR = sys.stdout.isatty() or IS_GITHUB_ACTIONS
+# Resolve paths relative to config file location
+base_dir = Path(config_file).parent.resolve()
+def resolve_path(p):
+    path = Path(p)
+    return path if path.is_absolute() else (base_dir / path).resolve()
 
+paths = cfg["paths"]
+PROJECT_DIR = base_dir
+ASSETS_DIR = resolve_path(paths["assets_dir"])
+ROOTFS_DIR = resolve_path(paths["rootfs_dir"])
+LIVE_DIR = resolve_path(paths["live_dir"])
+ISO_WORK_DIR = resolve_path(paths["iso_work_dir"])
+OUTPUT_DIR = resolve_path(paths["output_dir"])
 
-def _c(code: str, msg: str) -> str:
-    return f"\033[{code}m{msg}\033[0m" if _COLOR else msg
+distro = cfg["distro"]
+debian = cfg["debian"]
+packages = cfg["packages"]
+accounts = cfg.get("accounts", {})
+services = cfg.get("services", [])
+files = cfg.get("files", [])
+cleanup_globs = cfg.get("cleanup_globs", [])
+hooks = cfg.get("hooks", [])
 
+def log(msg):
+    print(f"[INFO] {msg}")
 
-def log_info(msg: str) -> None:
-    print(f"{_c('1;34', '[INFO]')} {msg}")
-
-
-def log_warn(msg: str) -> None:
-    if IS_GITHUB_ACTIONS:
-        print(f"::warning::{msg}")
-    print(f"{_c('1;33', '[WARN]')} {msg}", file=sys.stderr)
-
-
-def log_ok(msg: str) -> None:
-    print(f"{_c('1;32', '[ OK ]')} {msg}")
-
-
-def die(msg: str) -> None:
-    if IS_GITHUB_ACTIONS:
-        print(f"::error::{msg}")
-    print(f"{_c('1;31', '[ERROR]')} {msg}", file=sys.stderr)
+def die(msg):
+    print(f"[ERROR] {msg}", file=sys.stderr)
     sys.exit(1)
 
-
-@contextlib.contextmanager
-def gh_group(title: str):
-    """Collapsible log group in the GitHub Actions UI; a no-op elsewhere."""
-    if IS_GITHUB_ACTIONS:
-        print(f"::group::{title}")
-    try:
-        yield
-    finally:
-        if IS_GITHUB_ACTIONS:
-            print("::endgroup::")
-
-
-# --------------------------------------------------------------------------- #
-# hook points
-# --------------------------------------------------------------------------- #
-
-CHROOT_POINTS = {
-    "chroot:start": "very first thing in the chroot script",
-    "chroot:after_sources": "after /etc/apt/sources.list is written",
-    "chroot:after_update": "after 'apt-get update'",
-    "chroot:after_packages": "after the main package list is installed",
-    "chroot:after_locale": "after locale-gen/update-locale",
-    "chroot:after_users": "after accounts are created",
-    "chroot:after_services": "after 'systemctl enable' for configured services",
-    "chroot:end": "after theme/desktop-database setup, before final cleanup",
-    "chroot:finish": "very last thing in the chroot script",
-}
-
-HOST_POINTS = {
-    "host:before_rootfs": "before debootstrap runs",
-    "host:after_debootstrap": "after debootstrap, before mounts",
-    "host:before_chroot": "after before_chroot file copies, before entering chroot",
-    "host:after_chroot": "after the chroot script finishes, before after_chroot file copies",
-    "host:after_rootfs": "end of the rootfs stage, after unmounting",
-    "host:before_live": "start of the live stage",
-    "host:after_live": "end of the live stage",
-    "host:before_iso": "start of the iso stage",
-    "host:after_iso": "end of the iso stage",
-}
-
-VALID_POINTS = {**CHROOT_POINTS, **HOST_POINTS}
-
-
-# --------------------------------------------------------------------------- #
-# small process/file helpers
-# --------------------------------------------------------------------------- #
-
-
-def run(cmd: list[str], **kwargs) -> None:
-    log_info("$ " + " ".join(shlex.quote(c) for c in cmd))
+def run(cmd, **kwargs):
+    log(" ".join(cmd))
     subprocess.run(cmd, check=True, **kwargs)
 
-
-def is_mounted(path: Path) -> bool:
+def is_mounted(path):
     return subprocess.run(["mountpoint", "-q", str(path)]).returncode == 0
 
-
-def confirm_or_die(prompt: str, assume_yes: bool) -> None:
-    if assume_yes:
-        return
-    try:
-        reply = input(f"{prompt} [y/N] ")
-    except EOFError:
-        die(
-            f"{prompt} -- no input available (non-interactive shell). Re-run with --yes/-y (this is required in CI)."
-        )
-        return
-    if reply.strip().lower() != "y":
-        die("Aborted by user.")
-
-
-# --------------------------------------------------------------------------- #
-# config
-# --------------------------------------------------------------------------- #
-
-
-class Config:
-    def __init__(self, config_path: Path):
-        self.path = config_path
-        self.base_dir = config_path.parent.resolve()
-        with open(config_path) as f:
-            self.data = json.load(f)
-
-        for section in ("distro", "debian", "paths", "packages"):
-            if section not in self.data:
-                die(f"Config is missing required section: {section!r}")
-
-        p = self.data["paths"]
-        self.project_dir = self._resolve(p.get("project_dir", "."))
-        self.assets_dir = self._resolve(p["assets_dir"])
-        self.rootfs_dir = self._resolve(p["rootfs_dir"])
-        self.live_dir = self._resolve(p["live_dir"])
-        self.iso_work_dir = self._resolve(p["iso_work_dir"])
-        self.output_dir = self._resolve(p["output_dir"])
-
-        self.files = self.data.get("files", [])
-        self.cleanup_globs = self.data.get("cleanup_globs", [])
-        self.hooks = self.data.get("hooks", [])
-        self._validate_hooks()
-
-    def _resolve(self, p: str) -> Path:
-        path = Path(p)
-        return path if path.is_absolute() else (self.base_dir / path).resolve()
-
-    def _validate_hooks(self) -> None:
-        for hook in self.hooks:
-            for field in ("name", "point", "script"):
-                if field not in hook:
-                    die(f"Hook missing required field {field!r}: {hook}")
-            if hook["point"] not in VALID_POINTS:
-                die(
-                    f"Hook {hook['name']!r} has invalid point {hook['point']!r}. "
-                    f"Run with --list-hook-points to see valid values."
-                )
-
-    def hooks_at(self, point: str) -> list[dict]:
-        return [h for h in self.hooks if h["point"] == point and h.get("enabled", True)]
-
-    def all_packages(self) -> list[str]:
-        pkgs = self.data["packages"]
-        out: list[str] = []
-        for group_pkgs in pkgs.get("groups", {}).values():
-            out.extend(group_pkgs)
-        out.extend(pkgs.get("extra", []))
-        return out
-
-
-# --------------------------------------------------------------------------- #
-# file manifest engine
-# --------------------------------------------------------------------------- #
-
-
-def copy_manifest(cfg: Config, stage: str) -> None:
-    """Copy every manifest entry tagged with the given stage straight from
-    the project directory to its destination inside the rootfs.
-    stage is 'before_chroot' or 'after_chroot'."""
-    entries = [f for f in cfg.files if f.get("stage") == stage]
-    if not entries:
-        return
-    log_info(f"Copying {len(entries)} file(s)/dir(s) for stage '{stage}'...")
-    for entry in entries:
-        src = cfg.project_dir / entry["src"]
-        dest = cfg.rootfs_dir / entry["dest"].lstrip("/")
-        if not src.exists():
-            die(f"Manifest source not found: {src}")
-
-        entry_type = entry.get("type") or ("dir" if src.is_dir() else "file")
-        dest.parent.mkdir(parents=True, exist_ok=True)
-
-        if entry_type == "dir":
-            shutil.copytree(src, dest, dirs_exist_ok=True)
-        else:
-            shutil.copy2(src, dest)
-
-        mode = entry.get("mode")
-        if mode:
-            perm = int(mode, 8)
-            if entry_type == "dir":
-                for root, _dirs, files in os.walk(dest):
-                    for name in files:
-                        os.chmod(os.path.join(root, name), perm)
-            else:
-                os.chmod(dest, perm)
-
-
-def run_cleanup_globs(cfg: Config) -> None:
-    for pattern in cfg.cleanup_globs:
-        for match in glob.glob(str(cfg.rootfs_dir / pattern.lstrip("/"))):
-            log_info(f"Removing {match}")
-            Path(match).unlink(missing_ok=True)
-
-
-# --------------------------------------------------------------------------- #
-# host-side hooks
-# --------------------------------------------------------------------------- #
-
-
-def host_env(cfg: Config) -> dict:
-    d = cfg.data
-    env = os.environ.copy()
-    env.update(
-        {
-            "PROJECT_DIR": str(cfg.project_dir),
-            "ASSETS_DIR": str(cfg.assets_dir),
-            "ROOTFS_DIR": str(cfg.rootfs_dir),
-            "LIVE_DIR": str(cfg.live_dir),
-            "ISO_WORK_DIR": str(cfg.iso_work_dir),
-            "OUTPUT_DIR": str(cfg.output_dir),
-            "DISTRO_NAME": d["distro"]["name"],
-            "DISTRO_VERSION": d["distro"]["version"],
-            "DISTRO_HOSTNAME": d["distro"]["hostname"],
-            "DEBIAN_ARCH": d["debian"]["arch"],
-            "DEBIAN_DIST": d["debian"]["dist"],
-        }
-    )
-    return env
-
-
-def run_host_hooks(cfg: Config, point: str) -> None:
-    for hook in cfg.hooks_at(point):
-        log_info(f"Running host hook '{hook['name']}' @ {point}")
-        try:
-            subprocess.run(
-                ["bash", "-c", hook["script"]],
-                check=True,
-                cwd=str(cfg.project_dir),
-                env=host_env(cfg),
-            )
-        except subprocess.CalledProcessError as e:
-            if hook.get("continue_on_error"):
-                log_warn(
-                    f"Hook '{hook['name']}' failed (continuing, continue_on_error=true): {e}"
-                )
-            else:
-                raise
-
-
-# --------------------------------------------------------------------------- #
-# text config generation
-# --------------------------------------------------------------------------- #
-
-
-def write_text_configs(cfg: Config) -> None:
-    d = cfg.data
-    hostname = d["distro"]["hostname"]
-    rootfs = cfg.rootfs_dir
-
-    def w(rel_path: str, content: str, mode: int = 0o644) -> None:
-        p = rootfs / rel_path
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(content)
-        os.chmod(p, mode)
-
-    log_info("Writing hostname/hosts/network configuration...")
-    w("etc/hostname", hostname + "\n")
-    w("etc/hosts", f"127.0.0.1 localhost\n127.0.1.1 {hostname}\n")
-    w("etc/network/interfaces", "auto lo\niface lo inet loopback\n")
-
-    w(
-        "etc/apt/apt.conf.d/99parallel",
-        textwrap.dedent("""\
-        Acquire::Queue-Host-Limit "6";
-        Acquire::http::Pipeline-Depth "10";
-        """),
-    )
-
-    w(
-        "etc/NetworkManager/conf.d/10-globally-managed-devices.conf",
-        "[ifupdown]\nmanaged=true\n",
-    )
-
-    w(
-        "etc/systemd/system/NetworkManager.service.d/10-rfkill-unblock.conf",
-        "[Service]\nExecStartPre=/usr/sbin/rfkill unblock all\n",
-    )
-
-    w(
-        "etc/polkit-1/rules.d/50-netdev-networkmanager.rules",
-        textwrap.dedent("""\
-        polkit.addRule(function(action, subject) {
-            if (action.id.indexOf("org.freedesktop.NetworkManager.") == 0 &&
-                subject.isInGroup("netdev")) {
-                return polkit.Result.YES;
-            }
-        });
-        """),
-    )
-
-    grub_defaults_map = d.get("grub", {}).get("defaults", {})
-    if grub_defaults_map:
-        log_info("Patching /etc/default/grub...")
-        grub_defaults = rootfs / "etc/default/grub"
-        lines = grub_defaults.read_text().splitlines() if grub_defaults.exists() else []
-        seen = set()
-        for i, line in enumerate(lines):
-            for key, val in grub_defaults_map.items():
-                if line.startswith(f"{key}="):
-                    lines[i] = f"{key}={val}"
-                    seen.add(key)
-        for key, val in grub_defaults_map.items():
-            if key not in seen:
-                lines.append(f"{key}={val}")
-        grub_defaults.parent.mkdir(parents=True, exist_ok=True)
-        grub_defaults.write_text("\n".join(lines) + "\n")
-
-
-# --------------------------------------------------------------------------- #
-# chroot script assembly
-# --------------------------------------------------------------------------- #
-
-
-def build_chroot_script(cfg: Config) -> str:
-    d = cfg.data
-    lines: list[str] = [
-        "#!/bin/bash",
-        "set -euo pipefail",
-        "export DEBIAN_FRONTEND=noninteractive",
-        "",
-    ]
-
-    def emit_hooks(point: str) -> None:
-        for hook in cfg.hooks_at(point):
-            lines.append(f"# --- hook: {hook['name']} ({point}) ---")
-            lines.append(hook["script"].rstrip("\n"))
-            lines.append("")
-
-    emit_hooks("chroot:start")
-
-    deb = d["debian"]
-    components = " ".join(deb.get("components", ["main"]))
-    sources = [f"deb {deb['mirror']} {deb['dist']} {components}"] + deb.get(
-        "extra_apt_sources", []
-    )
-    lines.append("cat > /etc/apt/sources.list <<'APT_SOURCES_EOF'")
-    lines.extend(sources)
-    lines.append("APT_SOURCES_EOF")
-    lines.append("")
-    emit_hooks("chroot:after_sources")
-
-    lines.append("apt-get update")
-    lines.append("")
-    emit_hooks("chroot:after_update")
-
-    packages = cfg.all_packages()
-    if packages:
-        lines.append("apt-get install -y \\")
-        for i, pkg in enumerate(packages):
-            cont = " \\" if i < len(packages) - 1 else ""
-            lines.append(f"    {shlex.quote(pkg)}{cont}")
-        lines.append('echo "finished installing packages"')
-        lines.append("")
-    emit_hooks("chroot:after_packages")
-
-    lines.append(textwrap.dedent("""\
-        sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
-        locale-gen
-        update-locale LANG=en_US.UTF-8
-        """))
-    emit_hooks("chroot:after_locale")
-
-    accounts = d.get("accounts", {})
-    for user in accounts.get("users", []):
-        username = user["username"]
-        shell = user.get("shell", "/bin/bash")
-        groups = user.get("groups", [])
-        cmd = f"useradd --shell {shlex.quote(shell)}"
-        if user.get("create_home", True):
-            cmd += " --create-home"
-        if groups:
-            cmd += f" --groups {shlex.quote(','.join(groups))}"
-        cmd += f" {shlex.quote(username)}"
-        lines.append(cmd)
-        chpasswd_line = f"{username}:{user['password']}"
-        lines.append(f"echo {shlex.quote(chpasswd_line)} | chpasswd")
-    if "root_password" in accounts:
-        lines.append(
-            f"echo {shlex.quote('root:' + accounts['root_password'])} | chpasswd"
-        )
-    lines.append("")
-    emit_hooks("chroot:after_users")
-
-    for svc in d.get("services", []):
-        lines.append(f"systemctl enable {shlex.quote(svc)}")
-    lines.append("")
-    emit_hooks("chroot:after_services")
-
-    plymouth_theme = d.get("boot", {}).get("plymouth_theme")
-    if plymouth_theme:
-        lines.append(
-            f"plymouth-set-default-theme -R {shlex.quote(plymouth_theme)} || true"
-        )
-    lines.append("update-desktop-database /usr/share/applications || true")
-    lines.append("")
-    emit_hooks("chroot:end")
-
-    finalize = d.get("chroot_finalize", {})
-    if finalize.get("machine_id_setup", True):
-        lines.append("systemd-machine-id-setup")
-    if finalize.get("autoremove", True):
-        lines.append("apt-get autoremove -y")
-    if finalize.get("apt_clean", True):
-        lines.append("apt-get clean")
-    if finalize.get("update_initramfs", True):
-        lines.append("update-initramfs -u -k all")
-    lines.append("")
-    emit_hooks("chroot:finish")
-
-    return "\n".join(lines) + "\n"
-
-
-# --------------------------------------------------------------------------- #
-# stages
-# --------------------------------------------------------------------------- #
-
-MOUNTPOINTS = ["dev/pts", "dev", "proc", "sys", "run"]
-
-
-def cleanup_mounts(rootfs: Path) -> None:
-    for m in MOUNTPOINTS:
+def cleanup_mounts(rootfs):
+    for m in ["dev/pts", "dev", "proc", "sys", "run"]:
         target = rootfs / m
         if is_mounted(target):
             run(["umount", "-lf", str(target)])
 
+def run_hooks(point, chroot=False):
+    """Run hooks at a given point. If chroot=True, run inside chroot."""
+    for hook in hooks:
+        if hook["point"] == point and hook.get("enabled", True):
+            log(f"Running hook: {hook['name']}")
+            if chroot:
+                script = f"chroot {ROOTFS_DIR} /bin/bash -c {subprocess.list2cmdline(['/bin/bash', '-c', hook['script']])}"
+                # Write hook script to temp file in rootfs
+                hook_script = ROOTFS_DIR / f"tmp/hook_{hook['name'].replace(' ', '_')}.sh"
+                hook_script.parent.mkdir(parents=True, exist_ok=True)
+                hook_script.write_text(hook["script"])
+                hook_script.chmod(0o755)
+                run(["chroot", str(ROOTFS_DIR), str(hook_script)])
+                hook_script.unlink()
+            else:
+                env = os.environ.copy()
+                env.update({
+                    "PROJECT_DIR": str(PROJECT_DIR),
+                    "ASSETS_DIR": str(ASSETS_DIR),
+                    "ROOTFS_DIR": str(ROOTFS_DIR),
+                    "LIVE_DIR": str(LIVE_DIR),
+                    "ISO_WORK_DIR": str(ISO_WORK_DIR),
+                    "OUTPUT_DIR": str(OUTPUT_DIR),
+                    "DISTRO_NAME": distro["name"],
+                    "DISTRO_VERSION": distro["version"],
+                    "DISTRO_HOSTNAME": distro["hostname"],
+                    "DEBIAN_ARCH": debian["arch"],
+                    "DEBIAN_DIST": debian["dist"],
+                })
+                subprocess.run(["bash", "-c", hook["script"]], check=True, cwd=str(PROJECT_DIR), env=env)
 
-def stage_rootfs(cfg: Config, assume_yes: bool) -> None:
-    log_info("=== Stage 1/3: rootfs ===")
-    if not cfg.assets_dir.is_dir():
-        die(f"Assets directory not found: {cfg.assets_dir}")
-
-    if cfg.rootfs_dir.exists():
-        confirm_or_die(
-            f"Rootfs already exists at {cfg.rootfs_dir} and will be removed. Continue?",
-            assume_yes,
-        )
-        cleanup_mounts(cfg.rootfs_dir)
-        shutil.rmtree(cfg.rootfs_dir)
-
-    run_host_hooks(cfg, "host:before_rootfs")
-
-    try:
-        d = cfg.data
-        log_info(
-            f"[1/6] debootstrap ({d['debian']['dist']}/{d['debian']['arch']} from {d['debian']['mirror']})..."
-        )
-        run(
-            [
-                "debootstrap",
-                f"--arch={d['debian']['arch']}",
-                d["debian"]["dist"],
-                str(cfg.rootfs_dir),
-                d["debian"]["mirror"],
-            ]
-        )
-        run_host_hooks(cfg, "host:after_debootstrap")
-
-        log_info("[2/6] Mounting virtual filesystems...")
-        run(["mount", "--bind", "/dev", str(cfg.rootfs_dir / "dev")])
-        run(["mount", "--bind", "/dev/pts", str(cfg.rootfs_dir / "dev/pts")])
-        run(["mount", "-t", "proc", "proc", str(cfg.rootfs_dir / "proc")])
-        run(["mount", "-t", "sysfs", "sys", str(cfg.rootfs_dir / "sys")])
-        run(["mount", "-t", "tmpfs", "tmpfs", str(cfg.rootfs_dir / "run")])
-
-        log_info("[3/6] Applying pre-chroot file manifest and text configs...")
-        copy_manifest(cfg, "before_chroot")
-        write_text_configs(cfg)
-        run_host_hooks(cfg, "host:before_chroot")
-
-        log_info("[4/6] Installing packages and configuring system in chroot...")
-        script_path = cfg.rootfs_dir / "root/chroot.sh"
-        script_path.parent.mkdir(parents=True, exist_ok=True)
-        script_path.write_text(build_chroot_script(cfg))
-        os.chmod(script_path, 0o755)
-        run(["chroot", str(cfg.rootfs_dir), "/bin/bash", "/root/chroot.sh"])
-        script_path.unlink(missing_ok=True)
-        run_host_hooks(cfg, "host:after_chroot")
-
-        log_info("[5/6] Applying post-chroot file manifest...")
-        run_cleanup_globs(cfg)
-        copy_manifest(cfg, "after_chroot")
-
-    except subprocess.CalledProcessError as e:
-        log_warn(f"Command failed: {e}. Cleaning up...")
-        cleanup_mounts(cfg.rootfs_dir)
-        shutil.rmtree(cfg.rootfs_dir, ignore_errors=True)
-        raise
-    else:
-        log_info("[6/6] Unmounting...")
-        cleanup_mounts(cfg.rootfs_dir)
-        run_host_hooks(cfg, "host:after_rootfs")
-        log_ok(f"Rootfs build complete: {cfg.rootfs_dir}")
-
-
-def stage_live(cfg: Config, assume_yes: bool) -> None:
-    log_info("=== Stage 2/3: live filesystem ===")
-    if not cfg.rootfs_dir.is_dir():
-        die(f"Rootfs not found at {cfg.rootfs_dir} (run the 'rootfs' stage first)")
-
-    if cfg.live_dir.exists():
-        confirm_or_die(
-            f"Live dir already exists at {cfg.live_dir} and will be removed. Continue?",
-            assume_yes,
-        )
-    shutil.rmtree(cfg.live_dir, ignore_errors=True)
-    (cfg.live_dir / "live").mkdir(parents=True, exist_ok=True)
-
-    run_host_hooks(cfg, "host:before_live")
-
-    log_info("Cleaning rootfs caches/temp files before squashing...")
-    shutil.rmtree(cfg.rootfs_dir / "tmp", ignore_errors=True)
-    (cfg.rootfs_dir / "tmp").mkdir(exist_ok=True)
-    for deb in glob.glob(str(cfg.rootfs_dir / "var/cache/apt/archives/*.deb")):
-        os.remove(deb)
-    (cfg.rootfs_dir / "etc/machine-id").write_text("")
-
-    sq = cfg.data["squashfs"]
-    log_info(f"Creating SquashFS (comp={sq['comp']}, block={sq['block_size']})...")
-    exclude_args = []
-    for pat in sq.get("exclude_wildcards", []):
-        exclude_args += ["-e", pat]
-    run(
-        [
-            "mksquashfs",
-            str(cfg.rootfs_dir),
-            str(cfg.live_dir / "live/filesystem.squashfs"),
-            "-comp",
-            sq["comp"],
-            "-b",
-            sq["block_size"],
-            "-wildcards",
-            *exclude_args,
-        ]
-    )
-
-    log_info("Copying kernel...")
-    kernels = sorted((cfg.rootfs_dir / "boot").glob("vmlinuz-*"))
-    if not kernels:
-        die(f"No vmlinuz-* found in {cfg.rootfs_dir / 'boot'}")
-    shutil.copy2(kernels[-1], cfg.live_dir / "vmlinuz")
-
-    log_info("Copying initrd...")
-    initrds = sorted((cfg.rootfs_dir / "boot").glob("initrd.img-*"))
-    if not initrds:
-        die(f"No initrd.img-* found in {cfg.rootfs_dir / 'boot'}")
-    shutil.copy2(initrds[-1], cfg.live_dir / "initrd")
-
-    for pattern in ("memtest86*.bin", "memtest86*.efi"):
-        matches = list((cfg.rootfs_dir / "boot").glob(pattern))
-        if matches:
-            shutil.copy2(matches[0], cfg.live_dir / matches[0].name)
+def copy_files(stage):
+    """Copy files from manifest for given stage (before_chroot or after_chroot)."""
+    entries = [f for f in files if f.get("stage") == stage]
+    for entry in entries:
+        src = PROJECT_DIR / entry["src"]
+        dest = ROOTFS_DIR / entry["dest"].lstrip("/")
+        if not src.exists():
+            die(f"Source not found: {src}")
+        
+        entry_type = entry.get("type") or ("dir" if src.is_dir() else "file")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        
+        if entry_type == "dir":
+            shutil.copytree(src, dest, dirs_exist_ok=True)
         else:
-            log_warn(f"No {pattern} found")
+            shutil.copy2(src, dest)
+        
+        if "mode" in entry:
+            perm = int(entry["mode"], 8)
+            if entry_type == "dir":
+                for root, _dirs, fs in os.walk(dest):
+                    for name in fs:
+                        os.chmod(os.path.join(root, name), perm)
+            else:
+                os.chmod(dest, perm)
 
-    run_host_hooks(cfg, "host:after_live")
-    log_ok(f"Live filesystem complete: {cfg.live_dir}")
+def write_text_configs():
+    """Write hostname, hosts, network, and other text configs."""
+    hostname = distro["hostname"]
+    
+    def write(rel_path, content, mode=0o644):
+        p = ROOTFS_DIR / rel_path
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content)
+        os.chmod(p, mode)
+    
+    log("Writing system configuration files...")
+    write("etc/hostname", hostname + "\n")
+    write("etc/hosts", f"127.0.0.1 localhost\n127.0.1.1 {hostname}\n")
+    write("etc/network/interfaces", "auto lo\niface lo inet loopback\n")
+    write("etc/apt/apt.conf.d/99parallel", 'Acquire::Queue-Host-Limit "6";\nAcquire::http::Pipeline-Depth "10";\n')
+    write("etc/NetworkManager/conf.d/10-globally-managed-devices.conf", "[ifupdown]\nmanaged=true\n")
+    write("etc/systemd/system/NetworkManager.service.d/10-rfkill-unblock.conf", "[Service]\nExecStartPre=/usr/sbin/rfkill unblock all\n")
+    
+    # GRUB defaults
+    grub_defaults = cfg.get("grub", {}).get("defaults", {})
+    if grub_defaults:
+        log("Configuring GRUB...")
+        grub_file = ROOTFS_DIR / "etc/default/grub"
+        lines = grub_file.read_text().splitlines() if grub_file.exists() else []
+        seen = set()
+        for i, line in enumerate(lines):
+            for key, val in grub_defaults.items():
+                if line.startswith(f"{key}="):
+                    lines[i] = f"{key}={val}"
+                    seen.add(key)
+        for key, val in grub_defaults.items():
+            if key not in seen:
+                lines.append(f"{key}={val}")
+        grub_file.parent.mkdir(parents=True, exist_ok=True)
+        grub_file.write_text("\n".join(lines) + "\n")
 
+def get_all_packages():
+    """Get all packages from groups and extra list."""
+    pkgs = []
+    for group_pkgs in packages.get("groups", {}).values():
+        pkgs.extend(group_pkgs)
+    pkgs.extend(packages.get("extra", []))
+    return pkgs
 
-def _sha256_file(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(1024 * 1024), b""):
-            h.update(chunk)
-    return h.hexdigest()
+# ============================================================================
+# STAGE 1: Build rootfs with debootstrap
+# ============================================================================
+log("=== Stage 1: Building rootfs ===")
 
+if not ASSETS_DIR.is_dir():
+    die(f"Assets directory not found: {ASSETS_DIR}")
 
-def write_github_integration(cfg: Config, iso_path: Path) -> None:
-    """If running as a GitHub Actions step, expose the ISO as step outputs
-    (iso_path, iso_name, iso_sha256, iso_size_bytes) so later steps -- e.g.
-    actions/upload-artifact or a release step -- can reference it directly,
-    and append a short build summary to the job's Summary tab. No-op outside
-    of GitHub Actions (GITHUB_OUTPUT / GITHUB_STEP_SUMMARY unset)."""
-    gh_output = os.environ.get("GITHUB_OUTPUT")
-    gh_summary = os.environ.get("GITHUB_STEP_SUMMARY")
-    if not gh_output and not gh_summary:
-        return
+if ROOTFS_DIR.exists():
+    log("Removing existing rootfs...")
+    cleanup_mounts(ROOTFS_DIR)
+    shutil.rmtree(ROOTFS_DIR)
 
-    size_bytes = iso_path.stat().st_size
-    log_info("Computing SHA-256 checksum...")
-    sha256 = _sha256_file(iso_path)
-    log_info(f"SHA-256: {sha256}")
+ROOTFS_DIR.mkdir(parents=True, exist_ok=True)
 
-    if gh_output:
-        with open(gh_output, "a") as f:
-            f.write(f"iso_path={iso_path}\n")
-            f.write(f"iso_name={iso_path.name}\n")
-            f.write(f"iso_sha256={sha256}\n")
-            f.write(f"iso_size_bytes={size_bytes}\n")
+# Run pre-debootstrap hooks
+run_hooks("host:before_rootfs")
 
-    if gh_summary:
-        d = cfg.data["distro"]
-        with open(gh_summary, "a") as f:
-            f.write(textwrap.dedent(f"""\
-                ## Build summary: {d['name']} {d['version']}
+# Debootstrap
+log(f"Running debootstrap for {debian['dist']}/{debian['arch']}...")
+run([
+    "debootstrap",
+    f"--arch={debian['arch']}",
+    debian["dist"],
+    str(ROOTFS_DIR),
+    debian["mirror"],
+])
 
-                | | |
-                |---|---|
-                | Arch | `{cfg.data['debian']['arch']}` |
-                | ISO | `{iso_path.name}` |
-                | Size | {size_bytes / (1024 ** 2):.1f} MiB |
-                | SHA-256 | `{sha256}` |
-                """))
+run_hooks("host:after_debootstrap")
 
+# Mount virtual filesystems
+log("Mounting virtual filesystems...")
+run(["mount", "--bind", "/dev", str(ROOTFS_DIR / "dev")])
+run(["mount", "--bind", "/dev/pts", str(ROOTFS_DIR / "dev/pts")])
+run(["mount", "-t", "proc", "proc", str(ROOTFS_DIR / "proc")])
+run(["mount", "-t", "sysfs", "sys", str(ROOTFS_DIR / "sys")])
+run(["mount", "-t", "tmpfs", "tmpfs", str(ROOTFS_DIR / "run")])
 
-def stage_iso(cfg: Config) -> None:
-    log_info("=== Stage 3/3: ISO ===")
-    squashfs = cfg.live_dir / "live/filesystem.squashfs"
-    if not squashfs.is_file():
-        die(
-            f"filesystem.squashfs not found in {cfg.live_dir} (run the 'live' stage first)"
-        )
+# Copy before_chroot files and write configs
+log("Copying pre-chroot files...")
+copy_files("before_chroot")
+write_text_configs()
+run_hooks("host:before_chroot")
 
-    run_host_hooks(cfg, "host:before_iso")
+# Build and run chroot script
+log("Running chroot setup (installing packages, configuring system)...")
 
-    shutil.rmtree(cfg.iso_work_dir, ignore_errors=True)
-    (cfg.iso_work_dir / "boot/grub").mkdir(parents=True, exist_ok=True)
-    (cfg.iso_work_dir / "live").mkdir(parents=True, exist_ok=True)
-    cfg.output_dir.mkdir(parents=True, exist_ok=True)
+# Collect all chroot commands
+chroot_cmds = ["#!/bin/bash", "set -euo pipefail", "export DEBIAN_FRONTEND=noninteractive", ""]
 
-    log_info("Copying live system into ISO tree...")
-    shutil.copy2(squashfs, cfg.iso_work_dir / "live/filesystem.squashfs")
-    shutil.copy2(cfg.live_dir / "vmlinuz", cfg.iso_work_dir / "live/vmlinuz")
-    shutil.copy2(cfg.live_dir / "initrd", cfg.iso_work_dir / "live/initrd")
+# Run chroot:start hooks
+for hook in hooks:
+    if hook["point"] == "chroot:start" and hook.get("enabled", True):
+        chroot_cmds.append(f"# Hook: {hook['name']}")
+        chroot_cmds.append(hook["script"])
+        chroot_cmds.append("")
 
-    for pattern in ("memtest86*.efi", "memtest86*.bin"):
-        for f in cfg.live_dir.glob(pattern):
-            shutil.copy2(f, cfg.iso_work_dir / "boot" / f.name)
+# Setup apt sources
+components = " ".join(debian.get("components", ["main"]))
+sources = [f"deb {debian['mirror']} {debian['dist']} {components}"] + debian.get("extra_apt_sources", [])
+chroot_cmds.append("cat > /etc/apt/sources.list <<'EOF'")
+chroot_cmds.extend(sources)
+chroot_cmds.append("EOF")
+chroot_cmds.append("")
 
-    log_info("Copying GRUB configuration...")
-    shutil.copy2(cfg.assets_dir / "grub.cfg", cfg.iso_work_dir / "boot/grub/grub.cfg")
+# Run after_sources hooks
+for hook in hooks:
+    if hook["point"] == "chroot:after_sources" and hook.get("enabled", True):
+        chroot_cmds.append(f"# Hook: {hook['name']}")
+        chroot_cmds.append(hook["script"])
+        chroot_cmds.append("")
 
-    d = cfg.data["distro"]
-    arch = cfg.data["debian"]["arch"]
-    iso_path = cfg.output_dir / f"{d['name']}-{d['version']}-{arch}.iso"
-    log_info("Building ISO with grub-mkrescue...")
-    run(["grub-mkrescue", "--compress=xz", "-o", str(iso_path), str(cfg.iso_work_dir)])
+# apt-get update
+chroot_cmds.append("apt-get update")
+chroot_cmds.append("")
 
-    run_host_hooks(cfg, "host:after_iso")
-    log_ok(f"ISO written to: {iso_path}")
-    write_github_integration(cfg, iso_path)
+# Run after_update hooks
+for hook in hooks:
+    if hook["point"] == "chroot:after_update" and hook.get("enabled", True):
+        chroot_cmds.append(f"# Hook: {hook['name']}")
+        chroot_cmds.append(hook["script"])
+        chroot_cmds.append("")
 
+# Install packages
+all_pkgs = get_all_packages()
+if all_pkgs:
+    chroot_cmds.append("apt-get install -y \\")
+    for i, pkg in enumerate(all_pkgs):
+        cont = " \\" if i < len(all_pkgs) - 1 else ""
+        chroot_cmds.append(f"    {pkg}{cont}")
+    chroot_cmds.append("")
 
-# --------------------------------------------------------------------------- #
-# dependency checks
-# --------------------------------------------------------------------------- #
+# Run after_packages hooks
+for hook in hooks:
+    if hook["point"] == "chroot:after_packages" and hook.get("enabled", True):
+        chroot_cmds.append(f"# Hook: {hook['name']}")
+        chroot_cmds.append(hook["script"])
+        chroot_cmds.append("")
 
+# Locale setup
+chroot_cmds.append("sed -i 's/^# *en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen")
+chroot_cmds.append("locale-gen")
+chroot_cmds.append("update-locale LANG=en_US.UTF-8")
+chroot_cmds.append("")
 
-def check_deps(stages: set[str]) -> None:
-    needed = set()
-    if "rootfs" in stages:
-        needed |= {"debootstrap", "chroot", "mount", "umount", "mountpoint"}
-    if "live" in stages:
-        needed |= {"mksquashfs"}
-    if "iso" in stages:
-        needed |= {"grub-mkrescue"}
+# User accounts
+for user in accounts.get("users", []):
+    username = user["username"]
+    shell = user.get("shell", "/bin/bash")
+    groups = user.get("groups", [])
+    cmd = f"useradd --shell {shell}"
+    if user.get("create_home", True):
+        cmd += " --create-home"
+    if groups:
+        cmd += f" --groups {','.join(groups)}"
+    cmd += f" {username}"
+    chroot_cmds.append(cmd)
+    chroot_cmds.append(f"echo '{username}:{user['password']}' | chpasswd")
 
-    missing = [c for c in sorted(needed) if shutil.which(c) is None]
-    if missing:
-        die(f"Missing required tools: {', '.join(missing)} (install them and re-run)")
+if "root_password" in accounts:
+    chroot_cmds.append(f"echo 'root:{accounts['root_password']}' | chpasswd")
+chroot_cmds.append("")
 
+# Enable services
+for svc in services:
+    chroot_cmds.append(f"systemctl enable {svc}")
+chroot_cmds.append("")
 
-# --------------------------------------------------------------------------- #
-# main
-# --------------------------------------------------------------------------- #
+# Plymouth theme
+plymouth_theme = cfg.get("boot", {}).get("plymouth_theme")
+if plymouth_theme:
+    chroot_cmds.append(f"plymouth-set-default-theme -R {plymouth_theme} || true")
 
+chroot_cmds.append("update-desktop-database /usr/share/applications || true")
+chroot_cmds.append("")
 
-def print_hook_points() -> None:
-    print("chroot:* — spliced as bash into the generated chroot script, in order:")
-    for point, desc in CHROOT_POINTS.items():
-        print(f"  {point:<24} {desc}")
-    print()
-    print(
-        "host:* — run as a subprocess on the host (env vars: PROJECT_DIR, ASSETS_DIR,"
-    )
-    print(
-        "ROOTFS_DIR, LIVE_DIR, ISO_WORK_DIR, OUTPUT_DIR, DISTRO_NAME, DISTRO_VERSION,"
-    )
-    print("DISTRO_HOSTNAME, DEBIAN_ARCH, DEBIAN_DIST):")
-    for point, desc in HOST_POINTS.items():
-        print(f"  {point:<24} {desc}")
+# Finalize
+finalize = cfg.get("chroot_finalize", {})
+if finalize.get("machine_id_setup", True):
+    chroot_cmds.append("systemd-machine-id-setup")
+if finalize.get("autoremove", True):
+    chroot_cmds.append("apt-get autoremove -y")
+if finalize.get("apt_clean", True):
+    chroot_cmds.append("apt-get clean")
+if finalize.get("update_initramfs", True):
+    chroot_cmds.append("update-initramfs -u -k all")
 
+# Write and execute chroot script
+chroot_script = ROOTFS_DIR / "root/chroot.sh"
+chroot_script.parent.mkdir(parents=True, exist_ok=True)
+chroot_script.write_text("\n".join(chroot_cmds) + "\n")
+chroot_script.chmod(0o755)
+run(["chroot", str(ROOTFS_DIR), "/bin/bash", "/root/chroot.sh"])
+chroot_script.unlink()
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Build a Debian-based live ISO in one shot, driven by config.json.",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=textwrap.dedent("""\
-            Examples:
-              sudo python3 build.py
-              sudo python3 build.py -c variant.json
-              sudo python3 build.py -s rootfs
-              sudo python3 build.py -s live,iso
-              python3 build.py --list-hook-points
-            """),
-    )
-    parser.add_argument(
-        "-c",
-        "--config",
-        default="config.json",
-        help="Path to config file (default: ./config.json)",
-    )
-    parser.add_argument(
-        "-s",
-        "--stages",
-        default="rootfs,live,iso",
-        help="Comma-separated: rootfs,live,iso",
-    )
-    parser.add_argument(
-        "-y",
-        "--yes",
-        action="store_true",
-        help="Don't prompt before removing existing directories",
-    )
-    parser.add_argument(
-        "--list-hook-points",
-        action="store_true",
-        help="Print valid hook 'point' values and exit",
-    )
-    args = parser.parse_args()
+run_hooks("host:after_chroot")
 
-    if args.list_hook_points:
-        print_hook_points()
-        return
+# Cleanup globs
+for pattern in cleanup_globs:
+    import glob
+    for match in glob.glob(str(ROOTFS_DIR / pattern.lstrip("/"))):
+        log(f"Removing {match}")
+        Path(match).unlink(missing_ok=True)
 
-    if os.geteuid() != 0:
-        die(
-            "This script needs root privileges (it debootstraps, mounts, and chroots). Run with: sudo python3 build.py"
-        )
+# Copy after_chroot files
+log("Copying post-chroot files...")
+copy_files("after_chroot")
 
-    config_path = Path(args.config)
-    if not config_path.is_file():
-        die(f"Config file not found: {config_path}")
+# Unmount
+log("Unmounting rootfs...")
+cleanup_mounts(ROOTFS_DIR)
+run_hooks("host:after_rootfs")
 
-    stages = {s.strip() for s in args.stages.split(",") if s.strip()}
-    unknown = stages - {"rootfs", "live", "iso"}
-    if unknown:
-        die(f"Unknown stage(s): {', '.join(unknown)} (valid: rootfs, live, iso)")
+log("Rootfs build complete!")
 
-    log_info(f"Loading config from {config_path}")
-    cfg = Config(config_path)
+# ============================================================================
+# STAGE 2: Create live filesystem (SquashFS)
+# ============================================================================
+log("=== Stage 2: Creating live filesystem ===")
 
-    check_deps(stages)
+if not ROOTFS_DIR.is_dir():
+    die(f"Rootfs not found at {ROOTFS_DIR}")
 
-    start = time.time()
-    if "rootfs" in stages:
-        with gh_group("Stage: rootfs"):
-            stage_rootfs(cfg, args.yes)
-    if "live" in stages:
-        with gh_group("Stage: live"):
-            stage_live(cfg, args.yes)
-    if "iso" in stages:
-        with gh_group("Stage: iso"):
-            stage_iso(cfg)
+shutil.rmtree(LIVE_DIR, ignore_errors=True)
+(LIVE_DIR / "live").mkdir(parents=True, exist_ok=True)
 
-    log_ok(
-        f"Done in {time.time() - start:.0f}s. Stages run: {', '.join(sorted(stages))}"
-    )
+run_hooks("host:before_live")
 
+# Clean caches
+log("Cleaning rootfs caches...")
+shutil.rmtree(ROOTFS_DIR / "tmp", ignore_errors=True)
+(ROOTFS_DIR / "tmp").mkdir(exist_ok=True)
+for deb in glob.glob(str(ROOTFS_DIR / "var/cache/apt/archives/*.deb")):
+    os.remove(deb)
+(ROOTFS_DIR / "etc/machine-id").write_text("")
 
-if __name__ == "__main__":
-    try:
-        main()
-    except subprocess.CalledProcessError as e:
-        die(
-            f"Command failed with exit code {e.returncode}: {' '.join(e.cmd) if isinstance(e.cmd, list) else e.cmd}"
-        )
-    except KeyboardInterrupt:
-        die("Interrupted.")
+# Create SquashFS
+squashfs_cfg = cfg["squashfs"]
+log(f"Creating SquashFS ({squashfs_cfg['comp']}, block={squashfs_cfg['block_size']})...")
+exclude_args = []
+for pat in squashfs_cfg.get("exclude_wildcards", []):
+    exclude_args += ["-e", pat]
+run([
+    "mksquashfs",
+    str(ROOTFS_DIR),
+    str(LIVE_DIR / "live/filesystem.squashfs"),
+    "-comp", squashfs_cfg["comp"],
+    "-b", squashfs_cfg["block_size"],
+    "-wildcards", *exclude_args,
+])
+
+# Copy kernel
+log("Copying kernel...")
+kernels = sorted((ROOTFS_DIR / "boot").glob("vmlinuz-*"))
+if not kernels:
+    die(f"No vmlinuz-* found in {ROOTFS_DIR / 'boot'}")
+shutil.copy2(kernels[-1], LIVE_DIR / "vmlinuz")
+
+# Copy initrd
+log("Copying initrd...")
+initrds = sorted((ROOTFS_DIR / "boot").glob("initrd.img-*"))
+if not initrds:
+    die(f"No initrd.img-* found in {ROOTFS_DIR / 'boot'}")
+shutil.copy2(initrds[-1], LIVE_DIR / "initrd")
+
+# Copy memtest if available
+for pattern in ("memtest86*.bin", "memtest86*.efi"):
+    matches = list((ROOTFS_DIR / "boot").glob(pattern))
+    if matches:
+        shutil.copy2(matches[0], LIVE_DIR / matches[0].name)
+
+run_hooks("host:after_live")
+log("Live filesystem complete!")
+
+# ============================================================================
+# STAGE 3: Build bootable ISO
+# ============================================================================
+log("=== Stage 3: Building ISO ===")
+
+squashfs = LIVE_DIR / "live/filesystem.squashfs"
+if not squashfs.is_file():
+    die(f"filesystem.squashfs not found (run stage 2 first)")
+
+run_hooks("host:before_iso")
+
+shutil.rmtree(ISO_WORK_DIR, ignore_errors=True)
+(ISO_WORK_DIR / "boot/grub").mkdir(parents=True, exist_ok=True)
+(ISO_WORK_DIR / "live").mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+log("Copying files to ISO tree...")
+shutil.copy2(squashfs, ISO_WORK_DIR / "live/filesystem.squashfs")
+shutil.copy2(LIVE_DIR / "vmlinuz", ISO_WORK_DIR / "live/vmlinuz")
+shutil.copy2(LIVE_DIR / "initrd", ISO_WORK_DIR / "live/initrd")
+
+for pattern in ("memtest86*.efi", "memtest86*.bin"):
+    for f in LIVE_DIR.glob(pattern):
+        shutil.copy2(f, ISO_WORK_DIR / "boot" / f.name)
+
+log("Copying GRUB configuration...")
+shutil.copy2(ASSETS_DIR / "grub.cfg", ISO_WORK_DIR / "boot/grub/grub.cfg")
+
+iso_name = f"{distro['name']}-{distro['version']}-{debian['arch']}.iso"
+iso_path = OUTPUT_DIR / iso_name
+
+log("Building ISO with grub-mkrescue...")
+run(["grub-mkrescue", "--compress=xz", "-o", str(iso_path), str(ISO_WORK_DIR)])
+
+run_hooks("host:after_iso")
+log(f"ISO built successfully: {iso_path}")
