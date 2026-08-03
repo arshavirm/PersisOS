@@ -19,7 +19,7 @@ jobs:
 
       - name: Build Process
         run: |
-          sudo ./build.sh build.conf
+          sudo python3 build.py PersisOS-2.0-amd64.json --workdir build --outdir output
 
       - name: Upload ISO to the release
         uses: softprops/action-gh-release@v2
