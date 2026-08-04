@@ -5,6 +5,10 @@ on: workflow_dispatch
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, i386, arm64]
 
     steps:
       - uses: actions/checkout@v4
@@ -14,12 +18,12 @@ jobs:
 
       - name: Build Process
         run: |
-          sudo python3 build.py PersisOS-2.0-amd64.json --workdir build --outdir output
-       
+          sudo python3 build.py PersisOS-2.0-${{ matrix.arch }}.json --workdir build --outdir output
+
       - name: Upload ISO
         uses: actions/upload-artifact@v4
         with:
-          name: persisos-amd64
+          name: persisos-${{ matrix.arch }}
           path: output/*.iso
           compression-level: 0
           retention-days: 30

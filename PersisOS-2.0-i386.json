@@ -1,0 +1,29 @@
+{
+    "distro_name": "PersisOS",
+    "version": "2.0",
+    "arch": "i386",
+    "debian_distro": "trixie",
+    "debootstrap_variant": null,
+    "apt_mirror": "http://deb.debian.org/debian",
+    "hostname": "persisos",
+    "locale": "en_US.UTF-8",
+    "timezone": "UTC",
+    "root_password": null,
+    "live_username": "user",
+    "live_user_password": "user",
+    "packages": [
+        "kde-standard",
+        "curl",
+        "htop",
+        "network-manager",
+        "xorg",
+        "lightdm"
+    ],
+    "post_install_scripts": [
+        "#!/bin/bash\nset -e\necho 'Step 1: base customization'\nmkdir -p /etc/skel/Desktop\n",
+        "#!/bin/bash\nset -e\necho 'Step 2: enable services'\nsystemctl enable NetworkManager || true\n"
+    ],
+    "boot_append": "quiet splash",
+    "squashfs_compression": "xz",
+    "iso_filename": null
+}
