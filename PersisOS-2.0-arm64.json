@@ -17,11 +17,13 @@
         "htop",
         "network-manager",
         "xorg",
-        "lightdm"
+        "lightdm",
+        "calamares",
+        "apparmor",
+        "nftables"
     ],
     "post_install_scripts": [
-        "#!/bin/bash\nset -e\necho 'Step 1: base customization'\nmkdir -p /etc/skel/Desktop\n",
-        "#!/bin/bash\nset -e\necho 'Step 2: enable services'\nsystemctl enable NetworkManager || true\n"
+        "#!/bin/bash\nset -e\nsystemctl enable NetworkManager || true\n"
     ],
     "boot_append": "quiet splash",
     "squashfs_compression": "xz",

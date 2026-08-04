@@ -1,8 +1,0 @@
-[Plymouth Theme]
-Name=PersisOS
-Description=PersisOS Theme
-ModuleName=script
-
-[script]
-ImageDir=/usr/share/plymouth/themes/persisos
-ScriptFile=/usr/share/plymouth/themes/persisos/persisos.script

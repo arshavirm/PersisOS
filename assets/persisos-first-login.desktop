@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=PersisOS First Login
-Exec=/usr/local/bin/persisos-first-login
-OnlyShowIn=XFCE;
-X-GNOME-Autostart-enabled=true
-NoDisplay=true

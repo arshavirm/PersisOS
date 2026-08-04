@@ -10,16 +10,38 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+          - arch: arm64
+            platform: linux/arm64
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Environment
         run: sudo apt install debootstrap squashfs-tools grub2-common xorriso mtools python3
 
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Build Process
         run: |
-          sudo python3 build.py PersisOS-2.0-amd64.json --workdir build --outdir output
+          mkdir -p build output
+          docker run --rm \
+            --privileged \
+            --platform ${{ matrix.platform }} \
+            -v "${{ github.workspace }}":/workspace \
+            -w /workspace \
+            debian:trixie \
+            bash -c "
+              apt-get update &&
+              apt-get install -y debootstrap squashfs-tools grub2-common xorriso mtools python3 &&
+              python3 build.py PersisOS-2.0-${{ matrix.arch }}.json --workdir build --outdir output
+            "
 
       - name: Upload ISO to the release
         uses: softprops/action-gh-release@v2
