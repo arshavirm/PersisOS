@@ -17,7 +17,6 @@
         "htop",
         "network-manager",
         "xorg",
-        "lightdm",
         "calamares",
         "apparmor",
         "nftables"
