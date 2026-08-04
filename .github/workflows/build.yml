@@ -26,6 +26,7 @@ jobs:
         run: |
           mkdir -p build output
           docker run --rm \
+            --privileged \
             --platform ${{ matrix.platform }} \
             -v "${{ github.workspace }}":/workspace \
             -w /workspace \
