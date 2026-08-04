@@ -349,7 +349,7 @@ class LiveBuilder:
         self.chroot_exec(
             "export DEBIAN_FRONTEND=noninteractive && "
             "apt-get update && "
-            f"apt-get install -y --no-install-recommends {pkg_str} && "
+            f"apt-get install -y {pkg_str} && "
             "apt-get clean"
         )
 
