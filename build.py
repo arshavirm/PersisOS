@@ -27,33 +27,29 @@ REQUIRED_KEYS = [
     "packages",
 ]
 
-SUPPORTED_ARCHES = ["amd64", "i386", "arm64", "armhf"]
+SUPPORTED_ARCHES = ["amd64", "arm64", "armhf"]
 
-BIOS_CAPABLE_ARCHES = ["amd64", "i386"]
+BIOS_CAPABLE_ARCHES = ["amd64"]
 
 KERNEL_PACKAGE_MAP = {
     "amd64": "linux-image-amd64",
-    "i386": "linux-image-686",
     "arm64": "linux-image-arm64",
     "armhf": "linux-image-armmp",
 }
 
 GRUB_EFI_PACKAGE_MAP = {
     "amd64": "grub-efi-amd64-bin",
-    "i386": "grub-efi-ia32-bin",
     "arm64": "grub-efi-arm64-bin",
     "armhf": "grub-efi-arm-bin",
 }
 
 GRUB_EFI_TARGET_MAP = {
     "amd64": "x86_64-efi",
-    "i386": "i386-efi",
     "arm64": "arm64-efi",
     "armhf": "arm-efi",
 }
 EFI_BOOT_FILENAME_MAP = {
     "amd64": "BOOTX64.EFI",
-    "i386": "BOOTIA32.EFI",
     "arm64": "BOOTAA64.EFI",
     "armhf": "BOOTARM.EFI",
 }

@@ -11,8 +11,6 @@ jobs:
         include:
           - arch: amd64
             platform: linux/amd64
-          - arch: i386
-            platform: linux/386
           - arch: arm64
             platform: linux/arm64
 
