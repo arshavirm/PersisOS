@@ -30,6 +30,9 @@
         "apparmor",
         "nftables"
     ],
+    "exclude_packages": [
+        "plasma-discover"
+    ],
     "pre_chroot_scripts": [
         "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/usr/share/backgrounds/persisos\"\ncp -r ./assets/backgrounds \"$ROOTFS/usr/share/backgrounds/persisos\"\n"
     ],

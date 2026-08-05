@@ -163,6 +163,20 @@ def load_config(path):
     ):
         raise BuildError("'packages' must be a JSON list of package name strings")
 
+    cfg.setdefault("exclude_packages", [])
+    if not isinstance(cfg["exclude_packages"], list) or not all(
+        isinstance(p, str) for p in cfg["exclude_packages"]
+    ):
+        raise BuildError(
+            "'exclude_packages' must be a JSON list of package name strings"
+        )
+    overlap = set(cfg["packages"]) & set(cfg["exclude_packages"])
+    if overlap:
+        raise BuildError(
+            "Package(s) listed in both 'packages' and 'exclude_packages': "
+            + ", ".join(sorted(overlap))
+        )
+
     if "post_install_scripts" in cfg:
         scripts = cfg["post_install_scripts"]
         if not isinstance(scripts, list) or not all(
@@ -179,6 +193,7 @@ def load_config(path):
     else:
         raise BuildError("Config must contain 'post_install_scripts' (list of strings)")
 
+    # --- pre_chroot_scripts: host-side scripts run right after debootstrap,
     cfg.setdefault("pre_chroot_scripts", [])
     if not isinstance(cfg["pre_chroot_scripts"], list) or not all(
         isinstance(s, str) for s in cfg["pre_chroot_scripts"]
@@ -379,8 +394,15 @@ class LiveBuilder:
                 + iso_packages
             )
         )
-        pkg_str = " ".join(all_packages)
-        log(f"Installing {len(all_packages)} packages inside chroot")
+
+        exclude = self.cfg["exclude_packages"]
+        install_args = all_packages + [f"{p}-" for p in exclude]
+
+        pkg_str = " ".join(install_args)
+        log(
+            f"Installing {len(all_packages)} packages inside chroot"
+            + (f" (excluding {len(exclude)}: {', '.join(exclude)})" if exclude else "")
+        )
         self.chroot_exec(
             "export DEBIAN_FRONTEND=noninteractive && "
             "apt-get update && "
