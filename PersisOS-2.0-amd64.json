@@ -12,6 +12,9 @@
     "live_username": "user",
     "live_user_password": "user",
     "packages": [
+        "firmware-linux",
+        "firmware-linux-free",
+        "firmware-linux-nonfree",
         "kde-plasma-desktop",
         "plasma-widgets-addons",
         "polkit-kde-agent-1",
