@@ -12,7 +12,16 @@
     "live_username": "user",
     "live_user_password": "user",
     "packages": [
-        "kde-standard",
+        "kde-plasma-desktop",
+        "plasma-widgets-addons",
+        "polkit-kde-agent-1",
+        "plasma-pa",
+        "plasma-nm",
+        "gwenview",
+        "kate",
+        "kcalc",
+        "ark",
+        "okular",
         "curl",
         "htop",
         "network-manager",
@@ -20,6 +29,9 @@
         "calamares",
         "apparmor",
         "nftables"
+    ],
+    "pre_chroot_scripts": [
+        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/usr/share/backgrounds/persisos\"\ncp -r ./assets/backgrounds \"$ROOTFS/usr/share/backgrounds/persisos\"\n"
     ],
     "post_install_scripts": [
         "#!/bin/bash\nset -e\nsystemctl enable NetworkManager || true\n"

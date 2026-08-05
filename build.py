@@ -179,6 +179,12 @@ def load_config(path):
     else:
         raise BuildError("Config must contain 'post_install_scripts' (list of strings)")
 
+    cfg.setdefault("pre_chroot_scripts", [])
+    if not isinstance(cfg["pre_chroot_scripts"], list) or not all(
+        isinstance(s, str) for s in cfg["pre_chroot_scripts"]
+    ):
+        raise BuildError("'pre_chroot_scripts' must be a JSON list of strings")
+
     # --- arch ---
     cfg.setdefault("arch", "amd64")
     if cfg["arch"] not in SUPPORTED_ARCHES:
@@ -305,6 +311,35 @@ class LiveBuilder:
             f"127.0.1.1   {self.cfg['hostname']}\n"
             "::1         localhost ip6-localhost ip6-loopback\n"
         )
+
+    # ---------- pre-chroot phase (host-side, rootfs not yet chrooted) ----------
+
+    def run_pre_chroot_scripts(self):
+        scripts = self.cfg["pre_chroot_scripts"]
+        if not scripts:
+            log("No pre_chroot_scripts provided, skipping")
+            return
+
+        scripts_dir = self.workdir / "pre_chroot_scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+
+        env = os.environ.copy()
+        env["ROOTFS"] = str(self.chroot_dir)
+        env["ARCH"] = self.arch
+        env["DISTRO_NAME"] = self.cfg["distro_name"]
+
+        for i, script in enumerate(scripts, start=1):
+            if not script.strip():
+                continue
+            script_name = f"pre_chroot_{i:02d}.sh"
+            script_path = scripts_dir / script_name
+            script_path.write_text(script)
+            script_path.chmod(0o755)
+
+            with build_step(
+                f"Running pre-chroot script {i}/{len(scripts)} ({script_name})"
+            ):
+                run(["/bin/bash", str(script_path)], env=env)
 
     # ---------- chroot mount management ----------
 
@@ -600,6 +635,7 @@ menuentry "{label} (live)" {{
                 self.run_debootstrap()
             with build_step("Configuring apt sources"):
                 self.configure_apt()
+            self.run_pre_chroot_scripts()
             with build_step("Mounting chroot filesystems"):
                 self.mount_chroot()
             with build_step("Installing packages in chroot"):
