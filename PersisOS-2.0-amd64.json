@@ -13,7 +13,6 @@
     "live_user_password": "user",
     "packages": [
         "kde-plasma-desktop",
-        "plasma-workspace-wayland",
         "plasma-widgets-addons",
         "plasma-systemmonitor",
         "polkit-kde-agent-1",
