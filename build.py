@@ -109,7 +109,7 @@ def build_step(description):
 
 
 def log(msg):
-    print(f"[build_live_iso] {msg}", flush=True)
+    print(f"[build] {msg}", flush=True)
 
 
 def run(cmd, **kwargs):
@@ -194,6 +194,7 @@ def load_config(path):
         raise BuildError("Config must contain 'post_install_scripts' (list of strings)")
 
     # --- pre_chroot_scripts: host-side scripts run right after debootstrap,
+    # before the rootfs is chrooted into. Used for e.g. copying files in.
     cfg.setdefault("pre_chroot_scripts", [])
     if not isinstance(cfg["pre_chroot_scripts"], list) or not all(
         isinstance(s, str) for s in cfg["pre_chroot_scripts"]
@@ -740,18 +741,16 @@ def main():
         return 0
 
     except BuildError as e:
-        print("\n[build_live_iso] BUILD FAILED", file=sys.stderr)
-        print(f"[build_live_iso] {e}", file=sys.stderr)
+        print("\n[build] BUILD FAILED", file=sys.stderr)
+        print(f"[build] {e}", file=sys.stderr)
         return 1
 
     except KeyboardInterrupt:
-        print("\n[build_live_iso] Interrupted by user", file=sys.stderr)
+        print("\n[build] Interrupted by user", file=sys.stderr)
         return 130
 
     except Exception:
-        print(
-            "\n[build_live_iso] UNEXPECTED ERROR (please report this)", file=sys.stderr
-        )
+        print("\n[build] UNEXPECTED ERROR (please report this)", file=sys.stderr)
         traceback.print_exc()
         return 2
 
