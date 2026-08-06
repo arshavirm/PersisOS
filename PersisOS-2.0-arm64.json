@@ -61,7 +61,7 @@
     ],
     "pre_chroot_scripts": [
         "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/usr/share/backgrounds/persisos\"\ncp ./assets/backgrounds/* \"$ROOTFS/usr/share/backgrounds/persisos\"\n",
-        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/etc/skel/\"\ncp -r ./assets/kde/.config \"$ROOTFS/etc/skel/\"\ncp -r ./assets/kde/.local \"$ROOTFS/etc/skel/\"\n"
+        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/etc/skel/\"\ncp -r ./assets/kde/.config \"$ROOTFS/etc/skel/\"\n"
     ],
     "post_install_scripts": [
         "#!/bin/bash\nset -e\necho 'Enabling core hardware services'\nsystemctl enable NetworkManager || true\nsystemctl enable bluetooth || true\n",
