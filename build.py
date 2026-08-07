@@ -70,8 +70,6 @@ ISO_BUILD_PACKAGES_COMMON = [
 ]
 
 ISO_BUILD_PACKAGES_BIOS = [
-    "isolinux",
-    "syslinux-common",
     "grub-pc-bin",
 ]
 
@@ -109,7 +107,7 @@ def build_step(description):
 
 
 def log(msg):
-    print(f"[build] {msg}", flush=True)
+    print(f"[build_live_iso] {msg}", flush=True)
 
 
 def run(cmd, **kwargs):
@@ -194,7 +192,6 @@ def load_config(path):
         raise BuildError("Config must contain 'post_install_scripts' (list of strings)")
 
     # --- pre_chroot_scripts: host-side scripts run right after debootstrap,
-    # before the rootfs is chrooted into. Used for e.g. copying files in.
     cfg.setdefault("pre_chroot_scripts", [])
     if not isinstance(cfg["pre_chroot_scripts"], list) or not all(
         isinstance(s, str) for s in cfg["pre_chroot_scripts"]
@@ -258,7 +255,9 @@ class LiveBuilder:
         (self.iso_tree / "live").mkdir(parents=True, exist_ok=True)
         (self.iso_tree / "boot" / "grub").mkdir(parents=True, exist_ok=True)
         if self.arch in BIOS_CAPABLE_ARCHES:
-            (self.iso_tree / "isolinux").mkdir(parents=True, exist_ok=True)
+            (self.iso_tree / "boot" / "grub" / "i386-pc").mkdir(
+                parents=True, exist_ok=True
+            )
 
     # ---------- debootstrap ----------
 
@@ -471,17 +470,21 @@ class LiveBuilder:
 
     # ---------- EFI boot image ----------
 
-    def build_efi_boot_image(self):
+    def _write_embedded_grub_cfg(self):
 
-        grub_target = GRUB_EFI_TARGET_MAP[self.arch]
-        efi_boot_name = EFI_BOOT_FILENAME_MAP[self.arch]
-
-        embedded_cfg = (
+        path = self.chroot_dir / "tmp" / "embedded_grub.cfg"
+        path.write_text(
             f'search --no-floppy --set=root --label "{self.iso_volume_id}"\n'
             f"set prefix=($root)/boot/grub\n"
             f"configfile $prefix/grub.cfg\n"
         )
-        (self.chroot_dir / "tmp" / "embedded_grub.cfg").write_text(embedded_cfg)
+        return path
+
+    def build_efi_boot_image(self):
+        grub_target = GRUB_EFI_TARGET_MAP[self.arch]
+        efi_boot_name = EFI_BOOT_FILENAME_MAP[self.arch]
+
+        self._write_embedded_grub_cfg()
 
         log(f"Building standalone GRUB EFI binary ({grub_target})")
         self.chroot_exec(
@@ -506,6 +509,28 @@ class LiveBuilder:
             raise BuildError(f"EFI image was not produced at {efi_img_src}")
         shutil.copy(efi_img_src, efi_img_dest)
         log(f"EFI boot image written to {efi_img_dest}")
+
+    def build_bios_grub_image(self):
+
+        self._write_embedded_grub_cfg()
+
+        log("Building GRUB BIOS El Torito image (i386-pc-eltorito)")
+        self.chroot_exec(
+            "grub-mkstandalone "
+            "--format=i386-pc-eltorito "
+            "--output=/tmp/eltorito.img "
+            "--locales= --fonts= "
+            '"boot/grub/grub.cfg=/tmp/embedded_grub.cfg"'
+        )
+
+        eltorito_src = self.chroot_dir / "tmp" / "eltorito.img"
+        eltorito_dest = self.iso_tree / "boot" / "grub" / "i386-pc" / "eltorito.img"
+        if not eltorito_src.exists():
+            raise BuildError(
+                f"GRUB BIOS El Torito image was not produced at {eltorito_src}"
+            )
+        shutil.copy(eltorito_src, eltorito_dest)
+        log(f"GRUB BIOS boot image written to {eltorito_dest}")
 
     # ---------- cleanup chroot artifacts before squashing ----------
 
@@ -552,42 +577,18 @@ class LiveBuilder:
                 "-comp",
                 comp,
                 "-e",
-                "boot",  # kernel/initrd already copied out separately
+                "boot",
                 "-noappend",
             ]
         )
 
-    # ---------- isolinux / grub config ----------
+    # ---------- boot config (grub.cfg, shared by both BIOS and EFI) ----------
 
     def write_boot_configs(self):
         name = self.cfg["distro_name"]
         version = self.cfg["version"]
         label = f"{name} {version}".strip()
         boot_append = self.cfg["boot_append"]
-
-        if self.arch in BIOS_CAPABLE_ARCHES:
-            isolinux_bin_src = self.chroot_dir / "usr/lib/ISOLINUX/isolinux.bin"
-            ldlinux_src = self.chroot_dir / "usr/lib/syslinux/modules/bios/ldlinux.c32"
-            isolinux_dir = self.iso_tree / "isolinux"
-
-            if not isolinux_bin_src.exists():
-                raise BuildError(
-                    f"isolinux.bin not found in chroot at {isolinux_bin_src}"
-                )
-            shutil.copy(isolinux_bin_src, isolinux_dir / "isolinux.bin")
-            if ldlinux_src.exists():
-                shutil.copy(ldlinux_src, isolinux_dir / "ldlinux.c32")
-
-            (isolinux_dir / "isolinux.cfg").write_text(f"""\
-PROMPT 0
-TIMEOUT 50
-DEFAULT live
-
-LABEL live
-  MENU LABEL {label} (live)
-  KERNEL /live/vmlinuz
-  APPEND initrd=/live/initrd boot=live components {boot_append}
-""")
 
         (self.iso_tree / "boot" / "grub" / "grub.cfg").write_text(f"""\
 set timeout=5
@@ -612,20 +613,34 @@ menuentry "{label} (live)" {{
         cmd = ["xorriso", "-as", "mkisofs", "-o", str(iso_path)]
 
         if self.arch in BIOS_CAPABLE_ARCHES:
-            isohdpfx = self.chroot_dir / "usr/lib/ISOLINUX/isohdpfx.bin"
-            if not isohdpfx.exists():
-                raise BuildError(f"isohdpfx.bin not found in chroot at {isohdpfx}")
+            boot_hybrid = self.chroot_dir / "usr/lib/grub/i386-pc/boot_hybrid.img"
+            eltorito_rel = "boot/grub/i386-pc/eltorito.img"
+            eltorito_abs = self.iso_tree / eltorito_rel
+            if not boot_hybrid.exists():
+                raise BuildError(
+                    f"boot_hybrid.img not found in chroot at {boot_hybrid}"
+                )
+            if not eltorito_abs.exists():
+                raise BuildError(
+                    f"GRUB BIOS boot image missing at {eltorito_abs}; "
+                    f"was build_bios_grub_image() run?"
+                )
+            # GRUB2 is the primary BIOS bootloader: -b points at grub's own
+            # El Torito image (built by build_bios_grub_image()) rather
+            # than isolinux, and --grub2-mbr embeds a hybrid MBR so the
+            # same ISO also boots correctly when dd'd to a USB stick.
             cmd += [
-                "-isohybrid-mbr",
-                str(isohdpfx),
                 "-c",
-                "isolinux/boot.cat",
+                "boot/grub/boot.cat",
                 "-b",
-                "isolinux/isolinux.bin",
+                eltorito_rel,
                 "-no-emul-boot",
                 "-boot-load-size",
                 "4",
                 "-boot-info-table",
+                "--grub2-boot-info",
+                "--grub2-mbr",
+                str(boot_hybrid),
                 "-eltorito-alt-boot",
             ]
 
@@ -666,8 +681,10 @@ menuentry "{label} (live)" {{
             with build_step("Configuring locale/timezone/users"):
                 self.configure_system()
             self.run_post_install_scripts()
-            with build_step("Building EFI boot image"):
+            with build_step("Building GRUB boot images"):
                 self.build_efi_boot_image()
+                if self.arch in BIOS_CAPABLE_ARCHES:
+                    self.build_bios_grub_image()
             with build_step("Cleaning up chroot"):
                 self.cleanup_chroot()
         finally:
@@ -741,16 +758,18 @@ def main():
         return 0
 
     except BuildError as e:
-        print("\n[build] BUILD FAILED", file=sys.stderr)
-        print(f"[build] {e}", file=sys.stderr)
+        print("\n[build_live_iso] BUILD FAILED", file=sys.stderr)
+        print(f"[build_live_iso] {e}", file=sys.stderr)
         return 1
 
     except KeyboardInterrupt:
-        print("\n[build] Interrupted by user", file=sys.stderr)
+        print("\n[build_live_iso] Interrupted by user", file=sys.stderr)
         return 130
 
     except Exception:
-        print("\n[build] UNEXPECTED ERROR (please report this)", file=sys.stderr)
+        print(
+            "\n[build_live_iso] UNEXPECTED ERROR (please report this)", file=sys.stderr
+        )
         traceback.print_exc()
         return 2
 
