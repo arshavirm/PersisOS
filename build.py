@@ -10,7 +10,9 @@ Must be run as root (debootstrap, chroot, and mount all require it).
 
 import argparse
 import json
+import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -73,6 +75,28 @@ ISO_BUILD_PACKAGES_BIOS = [
     "grub-pc-bin",
 ]
 
+GRUB_STANDALONE_MODULES = [
+    "normal",
+    "part_gpt",
+    "part_msdos",
+    "fat",
+    "iso9660",
+    "search",
+    "search_fs_uuid",
+    "search_label",
+    "configfile",
+    "gzio",
+    "linux",
+    "boot",
+    "chain",
+]
+
+GRUB_EFI_EXTRA_MODULES = ["efi_gop", "efi_uga"]
+
+
+EFI_IMAGE_MIN_SIZE_MB = 4
+EFI_IMAGE_SIZE_MARGIN_MB = 2
+
 
 # --------------------------------------------------------------------------
 # Error handling
@@ -134,8 +158,6 @@ def host_arch():
 
 
 def sanitize_volume_id(name):
-    import re
-
     cleaned = re.sub(r"[^A-Za-z0-9_]", "_", name.upper())
     return cleaned[:32] or "LIVECD"
 
@@ -468,10 +490,9 @@ class LiveBuilder:
                 self.chroot_exec(f"/bin/bash /tmp/{script_name}")
             script_path_host.unlink(missing_ok=True)
 
-    # ---------- EFI boot image ----------
+    # ---------- EFI/BIOS GRUB standalone images ----------
 
     def _write_embedded_grub_cfg(self):
-
         path = self.chroot_dir / "tmp" / "embedded_grub.cfg"
         path.write_text(
             f'search --no-floppy --set=root --label "{self.iso_volume_id}"\n'
@@ -480,56 +501,99 @@ class LiveBuilder:
         )
         return path
 
+    def _run_grub_mkstandalone(self, grub_format, output_name, extra_modules=None):
+
+        self._write_embedded_grub_cfg()
+        modules = GRUB_STANDALONE_MODULES + list(extra_modules or [])
+        modules_str = " ".join(modules)
+        output_path = f"/tmp/{output_name}"
+
+        log(f"Building standalone GRUB image ({grub_format})")
+        self.chroot_exec(
+            f"grub-mkstandalone "
+            f"--format={grub_format} "
+            f"--output={output_path} "
+            f"--locales= --fonts= "
+            f'--modules="{modules_str}" '
+            f'"boot/grub/grub.cfg=/tmp/embedded_grub.cfg"'
+        )
+
+        host_path = self.chroot_dir / "tmp" / output_name
+        if not host_path.exists():
+            raise BuildError(
+                f"grub-mkstandalone did not produce the expected output "
+                f"at {host_path} (format={grub_format})"
+            )
+        return host_path
+
+    def _build_fat_image(self, contents, image_name, volume_label):
+
+        total_bytes = sum(
+            (self.chroot_dir / "tmp" / Path(src).name).stat().st_size
+            for src, _dest in contents
+        )
+        size_mb = max(
+            EFI_IMAGE_MIN_SIZE_MB,
+            math.ceil(total_bytes / (1024 * 1024)) + EFI_IMAGE_SIZE_MARGIN_MB,
+        )
+        log(
+            f"Assembling FAT image {image_name} "
+            f"({total_bytes} bytes of content -> {size_mb}MiB image)"
+        )
+
+        image_path = f"/tmp/{image_name}"
+        cmds = [
+            f"dd if=/dev/zero of={image_path} bs=1M count={size_mb}",
+            f"mkfs.vfat -n {volume_label} {image_path}",
+        ]
+        # mmd doesn't auto-create parent directories, so create every
+        # directory level in order (::EFI, then ::EFI/BOOT, etc.).
+        made_dirs = set()
+        for _src, dest in contents:
+            dir_part = dest.rsplit("/", 1)[0] if "/" in dest else "::"
+            if dir_part == "::":
+                continue
+            parts = dir_part[2:].split("/")  # strip leading "::"
+            prefix = "::"
+            for part in parts:
+                prefix = f"{prefix}{part}" if prefix == "::" else f"{prefix}/{part}"
+                if prefix not in made_dirs:
+                    cmds.append(f"mmd -i {image_path} {prefix}")
+                    made_dirs.add(prefix)
+        for src, dest in contents:
+            src_name = Path(src).name
+            cmds.append(f"mcopy -i {image_path} /tmp/{src_name} {dest}")
+
+        self.chroot_exec(" && ".join(cmds))
+
+        host_path = self.chroot_dir / "tmp" / image_name
+        if not host_path.exists():
+            raise BuildError(f"FAT image was not produced at {host_path}")
+        return host_path
+
     def build_efi_boot_image(self):
         grub_target = GRUB_EFI_TARGET_MAP[self.arch]
         efi_boot_name = EFI_BOOT_FILENAME_MAP[self.arch]
 
-        self._write_embedded_grub_cfg()
-
-        log(f"Building standalone GRUB EFI binary ({grub_target})")
-        self.chroot_exec(
-            f"grub-mkstandalone "
-            f"--format={grub_target} "
-            f"--output=/tmp/efi_boot.efi "
-            f"--locales= --fonts= "
-            f'"boot/grub/grub.cfg=/tmp/embedded_grub.cfg"'
+        efi_binary_host = self._run_grub_mkstandalone(
+            grub_target, "efi_boot.efi", extra_modules=GRUB_EFI_EXTRA_MODULES
         )
 
-        log("Assembling FAT EFI system partition image (efi.img)")
-        self.chroot_exec(
-            "dd if=/dev/zero of=/tmp/efi.img bs=1M count=10 && "
-            "mkfs.vfat -n EFIBOOT /tmp/efi.img && "
-            "mmd -i /tmp/efi.img ::EFI ::EFI/BOOT && "
-            f"mcopy -i /tmp/efi.img /tmp/efi_boot.efi ::EFI/BOOT/{efi_boot_name}"
+        efi_img_host = self._build_fat_image(
+            contents=[("efi_boot.efi", f"::EFI/BOOT/{efi_boot_name}")],
+            image_name="efi.img",
+            volume_label="EFIBOOT",
         )
 
-        efi_img_src = self.chroot_dir / "tmp" / "efi.img"
         efi_img_dest = self.iso_tree / "boot" / "grub" / "efi.img"
-        if not efi_img_src.exists():
-            raise BuildError(f"EFI image was not produced at {efi_img_src}")
-        shutil.copy(efi_img_src, efi_img_dest)
+        shutil.copy(efi_img_host, efi_img_dest)
         log(f"EFI boot image written to {efi_img_dest}")
 
     def build_bios_grub_image(self):
+        eltorito_host = self._run_grub_mkstandalone("i386-pc-eltorito", "eltorito.img")
 
-        self._write_embedded_grub_cfg()
-
-        log("Building GRUB BIOS El Torito image (i386-pc-eltorito)")
-        self.chroot_exec(
-            "grub-mkstandalone "
-            "--format=i386-pc-eltorito "
-            "--output=/tmp/eltorito.img "
-            "--locales= --fonts= "
-            '"boot/grub/grub.cfg=/tmp/embedded_grub.cfg"'
-        )
-
-        eltorito_src = self.chroot_dir / "tmp" / "eltorito.img"
         eltorito_dest = self.iso_tree / "boot" / "grub" / "i386-pc" / "eltorito.img"
-        if not eltorito_src.exists():
-            raise BuildError(
-                f"GRUB BIOS El Torito image was not produced at {eltorito_src}"
-            )
-        shutil.copy(eltorito_src, eltorito_dest)
+        shutil.copy(eltorito_host, eltorito_dest)
         log(f"GRUB BIOS boot image written to {eltorito_dest}")
 
     # ---------- cleanup chroot artifacts before squashing ----------
@@ -625,10 +689,7 @@ menuentry "{label} (live)" {{
                     f"GRUB BIOS boot image missing at {eltorito_abs}; "
                     f"was build_bios_grub_image() run?"
                 )
-            # GRUB2 is the primary BIOS bootloader: -b points at grub's own
-            # El Torito image (built by build_bios_grub_image()) rather
-            # than isolinux, and --grub2-mbr embeds a hybrid MBR so the
-            # same ISO also boots correctly when dd'd to a USB stick.
+
             cmd += [
                 "-c",
                 "boot/grub/boot.cat",
