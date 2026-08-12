@@ -69,7 +69,8 @@
         "#!/bin/bash\nset -e\necho 'Applying kernel/network hardening sysctls'\ncat > /etc/sysctl.d/99-persisos-hardening.conf << 'EOF'\nkernel.kptr_restrict=2\nkernel.dmesg_restrict=1\nkernel.yama.ptrace_scope=1\nnet.ipv4.conf.all.rp_filter=1\nnet.ipv4.conf.default.rp_filter=1\nnet.ipv4.icmp_echo_ignore_broadcasts=1\nnet.ipv4.conf.all.accept_redirects=0\nnet.ipv6.conf.all.accept_redirects=0\nnet.ipv4.conf.all.send_redirects=0\nfs.protected_hardlinks=1\nfs.protected_symlinks=1\nEOF\n",
         "#!/bin/bash\nset -e\necho 'Installing Plasma Theme'\ncp /.temp_assets/persisos-plasma-theme/usr/share/plasma/* /usr/share/plasma/\n",
         "#!/bin/bash\nset -e\necho 'Installing Background Script'\ncp /.temp_assets/persisos-plasma-theme/usr/bin/persisos-apply-theme /usr/bin/persisos-apply-theme\n",
-        "#!/bin/bash\nset -e\necho 'Applying xdg config'\ncp /.temp_assets/persisos-plasma-theme/etc/xdg/* /etc/xdg/\n"
+        "#!/bin/bash\nset -e\necho 'Applying xdg config'\ncp /.temp_assets/persisos-plasma-theme/etc/xdg/* /etc/xdg/\n",
+        "#!/bin/bash\nset -e\necho 'Removing Temp directory'\nrm /.temp_assets\n"
     ],
     "boot_append": "quiet splash",
     "squashfs_compression": "xz",
