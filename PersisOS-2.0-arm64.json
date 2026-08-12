@@ -2,7 +2,7 @@
     "distro_name": "PersisOS",
     "version": "2.0",
     "arch": "arm64",
-    "debian_distro": "trixie",
+    "debian_distro": "stable",
     "debootstrap_variant": null,
     "apt_mirror": "http://deb.debian.org/debian",
     "hostname": "persisos",
