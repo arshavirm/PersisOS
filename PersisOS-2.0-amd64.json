@@ -60,14 +60,16 @@
         "desktop-base"
     ],
     "pre_chroot_scripts": [
-        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/usr/share/backgrounds/persisos\"\ncp ./assets/backgrounds/* \"$ROOTFS/usr/share/backgrounds/persisos\"\n",
-        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/etc/skel/\"\ncp -r ./assets/kde/.config \"$ROOTFS/etc/skel/\"\n"
+        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/.temp_assets\"\ncp -r ./assets/persisos-plasma-theme \"$ROOTFS/.temp_assets/\"\n"
     ],
     "post_install_scripts": [
         "#!/bin/bash\nset -e\necho 'Enabling core hardware services'\nsystemctl enable NetworkManager || true\nsystemctl enable bluetooth || true\n",
         "#!/bin/bash\nset -e\necho 'Enabling AppArmor and automatic security updates'\nsystemctl enable apparmor || true\ncat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'\nAPT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Unattended-Upgrade \"1\";\nEOF\nsystemctl enable unattended-upgrades || true\n",
         "#!/bin/bash\nset -e\necho 'Installing default-deny nftables firewall ruleset'\ncat > /etc/nftables.conf << 'EOF'\n#!/usr/sbin/nft -f\nflush ruleset\n\ntable inet filter {\n    chain input {\n        type filter hook input priority 0; policy drop;\n        iif \"lo\" accept\n        ct state established,related accept\n        ct state invalid drop\n        ip protocol icmp accept\n        ip6 nexthdr icmpv6 accept\n    }\n    chain forward {\n        type filter hook forward priority 0; policy drop;\n    }\n    chain output {\n        type filter hook output priority 0; policy accept;\n    }\n}\nEOF\nsystemctl enable nftables || true\n",
-        "#!/bin/bash\nset -e\necho 'Applying kernel/network hardening sysctls'\ncat > /etc/sysctl.d/99-persisos-hardening.conf << 'EOF'\nkernel.kptr_restrict=2\nkernel.dmesg_restrict=1\nkernel.yama.ptrace_scope=1\nnet.ipv4.conf.all.rp_filter=1\nnet.ipv4.conf.default.rp_filter=1\nnet.ipv4.icmp_echo_ignore_broadcasts=1\nnet.ipv4.conf.all.accept_redirects=0\nnet.ipv6.conf.all.accept_redirects=0\nnet.ipv4.conf.all.send_redirects=0\nfs.protected_hardlinks=1\nfs.protected_symlinks=1\nEOF\n"
+        "#!/bin/bash\nset -e\necho 'Applying kernel/network hardening sysctls'\ncat > /etc/sysctl.d/99-persisos-hardening.conf << 'EOF'\nkernel.kptr_restrict=2\nkernel.dmesg_restrict=1\nkernel.yama.ptrace_scope=1\nnet.ipv4.conf.all.rp_filter=1\nnet.ipv4.conf.default.rp_filter=1\nnet.ipv4.icmp_echo_ignore_broadcasts=1\nnet.ipv4.conf.all.accept_redirects=0\nnet.ipv6.conf.all.accept_redirects=0\nnet.ipv4.conf.all.send_redirects=0\nfs.protected_hardlinks=1\nfs.protected_symlinks=1\nEOF\n",
+        "#!/bin/bash\nset -e\necho 'Installing Plasma Theme'\ncp /.temp_assets/persisos-plasma-theme/usr/share/plasma/* /usr/share/plasma/\n",
+        "#!/bin/bash\nset -e\necho 'Installing Background Script'\ncp /.temp_assets/persisos-plasma-theme/usr/bin/persisos-apply-theme /usr/bin/persisos-apply-theme\n",
+        "#!/bin/bash\nset -e\necho 'Applying xdg config'\ncp /.temp_assets/persisos-plasma-theme/etc/xdg/* /etc/xdg/\n"
     ],
     "boot_append": "quiet splash",
     "squashfs_compression": "xz",

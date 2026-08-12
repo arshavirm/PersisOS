@@ -1,0 +1,9 @@
+[Session]
+Theme=org.persisos.desktop
+
+[kdeglobals][KDE]
+LookAndFeelPackage=org.persisos.desktop
+
+[ksplashrc][KSplash]
+Engine=KSplashQML
+Theme=org.persisos.desktop

@@ -1,0 +1,17 @@
+{
+    "KPackageStructure": "Plasma/LookAndFeel",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "PersisOS"
+            }
+        ],
+        "Category": "",
+        "Description": "The default PersisOS desktop look and feel: top panel layout, PersisOS wallpaper slideshow and splash screen.",
+        "Id": "org.persisos.desktop",
+        "License": "MIT",
+        "Name": "PersisOS",
+        "Version": "1.0"
+    },
+    "X-Plasma-MainScript": "contents/layouts/org.kde.plasma.desktop-layout.js"
+}

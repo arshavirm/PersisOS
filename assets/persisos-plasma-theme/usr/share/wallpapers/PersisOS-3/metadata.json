@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Wallpaper",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "PersisOS"
+            }
+        ],
+        "Id": "PersisOS-3",
+        "License": "MIT",
+        "Name": "PersisOS - Winter Fjord"
+    }
+}

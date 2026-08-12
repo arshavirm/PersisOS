@@ -1,0 +1,11 @@
+#!/bin/sh
+
+set -e
+
+echo "Applying PersisOS global theme..."
+plasma-apply-lookandfeel -a org.persisos.desktop
+
+echo "Applying PersisOS panel layout..."
+plasma-apply-layouttemplate org.persisos.desktop.defaultlayout
+
+echo "Done. Log out and back in if the panel does not refresh immediately."

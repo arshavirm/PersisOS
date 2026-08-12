@@ -1,0 +1,16 @@
+{
+    "KPackageStructure": "Plasma/LayoutTemplate",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "PersisOS"
+            }
+        ],
+        "Description": "Top panel, not floating, with the PersisOS default widget set.",
+        "Id": "org.persisos.desktop.defaultlayout",
+        "License": "MIT",
+        "Name": "PersisOS Default"
+    },
+    "X-Plasma-API": "javascript",
+    "X-Plasma-MainScript": "contents/layouts/org.kde.plasma.desktop-layout.js"
+}

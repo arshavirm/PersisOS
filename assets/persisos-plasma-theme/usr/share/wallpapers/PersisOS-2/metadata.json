@@ -1,0 +1,13 @@
+{
+    "KPackageStructure": "Wallpaper",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "PersisOS"
+            }
+        ],
+        "Id": "PersisOS-2",
+        "License": "MIT",
+        "Name": "PersisOS - Flower Valley"
+    }
+}
