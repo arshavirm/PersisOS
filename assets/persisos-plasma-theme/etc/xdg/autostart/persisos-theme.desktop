@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PersisOS Theme
+Comment=Apply the PersisOS Plasma layout and appearance
+Exec=/usr/bin/persisos-apply-theme --quiet
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2
+X-KDE-StartupNotify=false
+NoDisplay=true

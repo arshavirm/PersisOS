@@ -1,11 +1,44 @@
 #!/bin/sh
 
-set -e
+set -eu
 
-echo "Applying PersisOS global theme..."
-plasma-apply-lookandfeel -a org.persisos.desktop
+# Plasma settings are per-user.  The global /etc/xdg defaults make the theme
+# available to new sessions, while this one-shot helper applies the panel and
+# wallpaper layout to the live user's config.
+config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
+marker="$config_home/.persisos-theme-applied"
 
-echo "Applying PersisOS panel layout..."
-plasma-apply-layouttemplate org.persisos.desktop.defaultlayout
+quiet=0
+force=0
+for arg in "$@"; do
+    case "$arg" in
+        --quiet) quiet=1 ;;
+        --force) force=1 ;;
+    esac
+done
 
-echo "Done. Log out and back in if the panel does not refresh immediately."
+if [ "$force" -ne 1 ] && [ -e "$marker" ]; then
+    exit 0
+fi
+
+mkdir -p "$config_home"
+log() {
+    [ "$quiet" -eq 1 ] || printf '%s\n' "$*"
+}
+
+log "Applying PersisOS global theme..."
+plasma-apply-lookandfeel -a org.persisos.desktop || true
+
+log "Applying PersisOS panel and wallpaper layout..."
+plasma-apply-layouttemplate org.persisos.desktop.defaultlayout || true
+
+# Keep the icon setting explicit even when a user's existing KDE config wins
+# over /etc/xdg defaults.
+if command -v kwriteconfig6 >/dev/null 2>&1; then
+    kwriteconfig6 --file "$config_home/kdeglobals" --group Icons --key Theme breeze
+elif command -v kwriteconfig5 >/dev/null 2>&1; then
+    kwriteconfig5 --file "$config_home/kdeglobals" --group Icons --key Theme breeze
+fi
+
+touch "$marker"
+log "PersisOS theme applied."

@@ -4,6 +4,9 @@ Theme=org.persisos.desktop
 [kdeglobals][KDE]
 LookAndFeelPackage=org.persisos.desktop
 
+[kdeglobals][Icons]
+Theme=breeze
+
 [ksplashrc][KSplash]
 Engine=KSplashQML
 Theme=org.persisos.desktop

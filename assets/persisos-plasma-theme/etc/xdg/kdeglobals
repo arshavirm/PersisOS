@@ -1,0 +1,5 @@
+[KDE]
+LookAndFeelPackage=org.persisos.desktop
+
+[Icons]
+Theme=breeze
