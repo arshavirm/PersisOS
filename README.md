@@ -1,5 +1,4 @@
 
-
 # PersisOS
 
 ![Static Badge](https://img.shields.io/badge/made_by-Arshavir_Mirzakhani-blue?style=flat)
