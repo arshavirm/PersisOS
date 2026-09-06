@@ -23,11 +23,13 @@ for (var p = 0; p < existingPanels.length; p++) {
 var panel = new plasma.Panel()
 panel.location = 'top'
 panel.height = gridUnit * 2.2
-panel.floating = false
+panel.floating = true
 panel.alignment = 'left'
 panel.lengthMode = 'fill'
 
 var appmenu = panel.addWidget('org.kde.plasma.kickoff')
+appmenu.currentConfigGroup = ['General']
+appmenu.writeConfig('icon', '/usr/share/icons/hicolor/scalable/apps/persisos-launcher.svg')
 appmenu.currentConfigGroup = ['Shortcuts']
 appmenu.writeConfig('global', 'Meta')
 
@@ -41,4 +43,4 @@ panel.addWidget('org.kde.plasma.digitalclock')
 var showdesktop = panel.addWidget('org.kde.plasma.showdesktop')
 
 panel.currentConfigGroup = ['General']
-panel.writeConfig('floating', false)
+panel.writeConfig('floating', true)

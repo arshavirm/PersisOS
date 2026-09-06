@@ -17,7 +17,7 @@ Rectangle {
 
     Image {
         id: logo
-        source: "images/logo-white.svg"
+        source: "/usr/share/icons/hicolor/scalable/apps/persisos.svg"
         sourceSize.width: 180
         sourceSize.height: 180
         width: 180
@@ -52,7 +52,7 @@ Rectangle {
         anchors.top: logo.bottom
         anchors.topMargin: 24
         anchors.horizontalCenter: logo.horizontalCenter
-        text: "PersisOS"
+        text: "PersisOS 2.0"
         color: "#ffffff"
         font.pointSize: 16
         font.letterSpacing: 2

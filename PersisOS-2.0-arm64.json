@@ -42,7 +42,9 @@
         "apparmor",
         "apparmor-profiles",
         "nftables",
-        "unattended-upgrades"
+        "unattended-upgrades",
+        "sddm",
+        "sddm-theme-breeze"
     ],
     "exclude_packages": [
         "plasma-discover",
@@ -50,7 +52,7 @@
         "desktop-base"
     ],
     "pre_chroot_scripts": [
-        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/.temp_assets\"\ncp -r ./assets/persisos-plasma-theme \"$ROOTFS/.temp_assets/\"\n"
+        "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/.temp_assets\"\ncp -r ./assets/persisos-plasma-theme \"$ROOTFS/.temp_assets/\"\ninstall -Dm 0644 ./persisos.svg \"$ROOTFS/.temp_assets/persisos-plasma-theme/usr/share/icons/hicolor/scalable/apps/persisos.svg\"\n"
     ],
     "post_install_scripts": [
         "#!/bin/bash\nset -e\necho 'Enabling core hardware services'\nsystemctl enable NetworkManager || true\nsystemctl enable bluetooth || true\n",
@@ -60,6 +62,8 @@
         "#!/bin/bash\nset -e\necho 'Installing Plasma Theme and Wallpapers'\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/plasma/. /usr/share/plasma/\nmkdir -p /usr/share/wallpapers\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/wallpapers/. /usr/share/wallpapers/\n",
         "#!/bin/bash\nset -e\necho 'Installing Background Script'\ninstall -m 0755 /.temp_assets/persisos-plasma-theme/usr/bin/persisos-apply-theme /usr/bin/persisos-apply-theme\n",
         "#!/bin/bash\nset -e\necho 'Applying xdg and SDDM config'\ncp -a /.temp_assets/persisos-plasma-theme/etc/xdg/. /etc/xdg/\nmkdir -p /etc/sddm.conf.d\ncp -a /.temp_assets/persisos-plasma-theme/etc/sddm.conf.d/. /etc/sddm.conf.d/\n",
+        "#!/bin/sh\nset -eu\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/icons /usr/share/\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/sddm /usr/share/\n",
+        "#!/bin/sh\nset -eu\n# Override Debian display identity while keeping its upstream release metadata.\ncp /usr/lib/os-release /tmp/persisos-os-release\nsed -i '/^\\(NAME\\|PRETTY_NAME\\|ID\\|ID_LIKE\\|VERSION\\|VERSION_ID\\|LOGO\\)=/d' /tmp/persisos-os-release\ncat >> /tmp/persisos-os-release <<'EOF'\nNAME=\"PersisOS\"\nPRETTY_NAME=\"PersisOS 2.0\"\nID=persisos\nID_LIKE=debian\nVERSION=\"2.0\"\nVERSION_ID=\"2.0\"\nLOGO=persisos\nEOF\ninstall -m 0644 /tmp/persisos-os-release /usr/lib/os-release\nln -sfn ../usr/lib/os-release /etc/os-release\nrm /tmp/persisos-os-release\nprintf '%s\\n' 'PersisOS 2.0 \\n \\l' > /etc/issue\nprintf 'PersisOS 2.0\\n' > /etc/issue.net\nmkdir -p /etc/default/grub.d\nprintf 'GRUB_DISTRIBUTOR=\"PersisOS 2.0\"\\n' > /etc/default/grub.d/50-persisos.cfg\n",
         "#!/bin/bash\nset -e\necho 'Removing Temp directory'\nrm -rf /.temp_assets\n"
     ],
     "boot_append": "quiet splash",
