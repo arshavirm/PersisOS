@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -102,7 +103,8 @@ def log(msg):
 
 def run(cmd, **kwargs):
     """Run a command, echoing it first, raising on failure."""
-    log("+ " + (cmd if isinstance(cmd, str) else " ".join(map(str, cmd))))
+    display = cmd if isinstance(cmd, str) else " ".join(shlex.quote(str(part)) for part in cmd)
+    log("+ " + display)
     subprocess.run(cmd, check=True, **kwargs)
 
 
@@ -139,6 +141,9 @@ def load_config(path):
         cfg = json.loads(raw)
     except json.JSONDecodeError as e:
         raise BuildError(f"Config file '{path}' is not valid JSON: {e}")
+
+    if not isinstance(cfg, dict):
+        raise BuildError("Config root must be a JSON object")
 
     missing = [k for k in REQUIRED_KEYS if k not in cfg]
     if missing:
@@ -202,7 +207,9 @@ def load_config(path):
     if cfg.get("live_username") and not cfg.get("live_user_password"):
         cfg["live_user_password"] = cfg["live_username"]
     cfg.setdefault("extra_apt_sources", [])
-    if not isinstance(cfg["extra_apt_sources"], list):
+    if not isinstance(cfg["extra_apt_sources"], list) or not all(
+        isinstance(source, str) for source in cfg["extra_apt_sources"]
+    ):
         raise BuildError("'extra_apt_sources' must be a JSON list of strings")
     cfg.setdefault("debootstrap_variant", None)
     cfg.setdefault("kernel_package", KERNEL_PACKAGE_MAP[cfg["arch"]])
@@ -399,7 +406,7 @@ class LiveBuilder:
         exclude = self.cfg["exclude_packages"]
         install_args = all_packages + [f"{p}-" for p in exclude]
 
-        pkg_str = " ".join(install_args)
+        pkg_str = " ".join(shlex.quote(package) for package in install_args)
         log(
             f"Installing {len(all_packages)} packages inside chroot"
             + (f" (excluding {len(exclude)}: {', '.join(exclude)})" if exclude else "")
@@ -418,14 +425,16 @@ class LiveBuilder:
         timezone = self.cfg["timezone"]
         log(f"Configuring locale ({locale}) and timezone ({timezone})")
 
+        locale_q = shlex.quote(locale)
+        timezone_q = shlex.quote(timezone)
         self.chroot_exec(
-            f"echo '{locale} UTF-8' >> /etc/locale.gen && "
-            f"locale-gen && "
-            f"update-locale LANG={locale}"
+            f"grep -qxF {shlex.quote(locale + ' UTF-8')} /etc/locale.gen || "
+            f"echo {shlex.quote(locale + ' UTF-8')} >> /etc/locale.gen; "
+            f"locale-gen && update-locale LANG={locale_q}"
         )
         self.chroot_exec(
-            f"ln -sf /usr/share/zoneinfo/{timezone} /etc/localtime && "
-            f"echo '{timezone}' > /etc/timezone && "
+            f"ln -sf /usr/share/zoneinfo/{timezone_q} /etc/localtime && "
+            f"echo {timezone_q} > /etc/timezone && "
             f"dpkg-reconfigure -f noninteractive tzdata || true"
         )
 
@@ -623,6 +632,11 @@ def parse_args():
         action="store_true",
         help="Don't delete the working directory (chroot) after building, "
         "useful for debugging a failed build",
+    )
+    p.add_argument(
+        "--version",
+        action="version",
+        version="PersisOS live ISO builder 1.0",
     )
     return p.parse_args()
 
