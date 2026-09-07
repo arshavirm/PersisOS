@@ -1,11 +1,6 @@
 #!/usr/bin/env python3
 """
-build.py
-
-Usage:
-  sudo python3 build.py config.json [--workdir /path/to/build] [--outdir /path/to/output]
-
-Must be run as root (debootstrap, chroot, and mount all require it).
+PersisOS live ISO builder
 """
 
 import argparse
@@ -13,688 +8,707 @@ import json
 import os
 import re
 import shutil
-import shlex
 import subprocess
 import sys
 import tempfile
-import traceback
-from contextlib import contextmanager
 from pathlib import Path
 
-REQUIRED_KEYS = [
-    "distro_name",
-    "version",
-    "debian_distro",
-    "apt_mirror",
-    "packages",
-]
+# ---------------------------------------------------------------------------
+# Architecture maps
+# ---------------------------------------------------------------------------
 
-SUPPORTED_ARCHES = ["amd64", "arm64", "armhf"]
-
-BIOS_CAPABLE_ARCHES = ["amd64"]
-
-KERNEL_PACKAGE_MAP = {
+KERNEL_PACKAGES = {
     "amd64": "linux-image-amd64",
     "arm64": "linux-image-arm64",
     "armhf": "linux-image-armmp",
 }
 
-GRUB_EFI_PACKAGE_MAP = {
+GRUB_EFI_PACKAGES = {
     "amd64": "grub-efi-amd64-bin",
     "arm64": "grub-efi-arm64-bin",
     "armhf": "grub-efi-arm-bin",
 }
 
-LIVE_BOOT_PACKAGES = [
+GRUB_EFI_FORMAT = {
+    "amd64": "x86_64-efi",
+    "arm64": "arm64-efi",
+    "armhf": "arm-efi",
+}
+
+GRUB_EFI_BINARY = {
+    "amd64": "bootx64.efi",
+    "arm64": "bootaa64.efi",
+    "armhf": "bootarm.efi",
+}
+
+LIVE_PACKAGES = [
     "live-boot",
     "systemd-sysv",
     "sudo",
     "locales",
 ]
 
-ISO_BUILD_PACKAGES_COMMON = [
+HOST_BUILD_TOOLS = [
+    "debootstrap",
     "squashfs-tools",
     "xorriso",
     "mtools",
     "dosfstools",
     "grub-common",
-]
-
-ISO_BUILD_PACKAGES_BIOS = [
     "grub-pc-bin",
+    "grub2-common",
 ]
 
+# ---------------------------------------------------------------------------
+# GRUB module lists — self-contained and Ventoy-safe
+# ---------------------------------------------------------------------------
 
-# --------------------------------------------------------------------------
-# Error handling
-# --------------------------------------------------------------------------
+GRUB_BIOS_MODULES = [
+    "biosdisk",
+    "part_gpt",
+    "part_msdos",
+    "fat",
+    "iso9660",
+    "udf",
+    "linux",
+    "initrd",
+    "normal",
+    "configfile",
+    "search",
+    "search_fs_uuid",
+    "search_fs_file",
+    "search_label",
+    "loopback",
+    "gfxterm",
+    "all_video",
+    "test",
+    "true",
+    "echo",
+    "help",
+    "ls",
+    "reboot",
+    "halt",
+]
+
+GRUB_EFI_MODULES = [
+    "part_gpt",
+    "part_msdos",
+    "fat",
+    "iso9660",
+    "udf",
+    "linux",
+    "initrd",
+    "normal",
+    "configfile",
+    "search",
+    "search_fs_uuid",
+    "search_fs_file",
+    "search_label",
+    "loopback",
+    "gfxterm",
+    "all_video",
+    "test",
+    "true",
+    "echo",
+    "help",
+    "ls",
+    "reboot",
+    "halt",
+]
+
+# ---------------------------------------------------------------------------
+# Error handling helpers
+# ---------------------------------------------------------------------------
 
 
 class BuildError(Exception):
-    """A known, expected failure -- reported cleanly, no traceback."""
-
-
-@contextmanager
-def build_step(description):
-    log(f"==> {description}")
-    try:
-        yield
-    except BuildError:
-        raise
-    except subprocess.CalledProcessError as e:
-        cmd_str = e.cmd if isinstance(e.cmd, str) else " ".join(map(str, e.cmd))
-        raise BuildError(
-            f"Step failed: {description}\n"
-            f"  Command:    {cmd_str}\n"
-            f"  Exit code:  {e.returncode}\n"
-            f"  (see command output above for the underlying error)"
-        ) from e
-    except FileNotFoundError as e:
-        raise BuildError(
-            f"Step failed: {description}\n  Missing file or command: {e}"
-        ) from e
-    except OSError as e:
-        raise BuildError(f"Step failed: {description}\n  OS error: {e}") from e
-
-
-def log(msg):
-    print(f"[build_live_iso] {msg}", flush=True)
+    pass
 
 
 def run(cmd, **kwargs):
-    """Run a command, echoing it first, raising on failure."""
-    display = cmd if isinstance(cmd, str) else " ".join(shlex.quote(str(part)) for part in cmd)
-    log("+ " + display)
-    subprocess.run(cmd, check=True, **kwargs)
+    """Run a command, raising BuildError on failure."""
+    result = subprocess.run(cmd, **kwargs)
+    if result.returncode != 0:
+        raise BuildError(
+            f"Command failed (exit {result.returncode}): {' '.join(str(c) for c in cmd)}"
+        )
+    return result
+
+
+def build_step(name):
+    """Context manager that prints step banners."""
+    import contextlib
+
+    @contextlib.contextmanager
+    def _ctx():
+        print(f"\n{'='*60}")
+        print(f"  {name}")
+        print(f"{'='*60}")
+        try:
+            yield
+        except BuildError:
+            raise
+        except Exception as exc:
+            raise BuildError(f"Step '{name}' failed: {exc}") from exc
+
+    return _ctx()
 
 
 def require_root():
     if os.geteuid() != 0:
-        raise BuildError(
-            "This script must be run as root (needed for debootstrap/chroot/mount)."
-        )
+        raise BuildError("This script must be run as root.")
 
 
-def require_tool(name, hint=None):
+def require_tool(name):
     if shutil.which(name) is None:
-        extra = f" ({hint})" if hint else ""
-        raise BuildError(f"Required tool '{name}' not found on host{extra}.")
+        raise BuildError(f"Required tool not found: {name}")
 
 
-def host_arch():
-    return subprocess.check_output(["dpkg", "--print-architecture"]).decode().strip()
+# ---------------------------------------------------------------------------
+# Config loader
+# ---------------------------------------------------------------------------
+
+REQUIRED_KEYS = ["distro_name", "version", "debian_distro", "apt_mirror", "packages"]
+DEFAULTS = {
+    "locale": "en_US.UTF-8",
+    "timezone": "UTC",
+    "squashfs_compression": "xz",
+    "splash": "",
+    "pre_chroot_scripts": [],
+    "post_install_scripts": [],
+    "architecture": "amd64",
+}
 
 
-def sanitize_volume_id(name):
-    cleaned = re.sub(r"[^A-Za-z0-9_]", "_", name.upper())
-    return cleaned[:32] or "LIVECD"
-
-
-def load_config(path):
-    try:
-        with open(path, "r") as f:
-            raw = f.read()
-    except OSError as e:
-        raise BuildError(f"Could not read config file '{path}': {e}")
-
-    try:
-        cfg = json.loads(raw)
-    except json.JSONDecodeError as e:
-        raise BuildError(f"Config file '{path}' is not valid JSON: {e}")
-
-    if not isinstance(cfg, dict):
-        raise BuildError("Config root must be a JSON object")
+def load_config(path: str) -> dict:
+    with open(path) as f:
+        cfg = json.load(f)
 
     missing = [k for k in REQUIRED_KEYS if k not in cfg]
     if missing:
-        raise BuildError(f"Config is missing required keys: {', '.join(missing)}")
+        raise BuildError(f"Config missing required keys: {', '.join(missing)}")
 
-    if not isinstance(cfg["packages"], list) or not all(
-        isinstance(p, str) for p in cfg["packages"]
-    ):
-        raise BuildError("'packages' must be a JSON list of package name strings")
+    for k, v in DEFAULTS.items():
+        cfg.setdefault(k, v)
 
-    cfg.setdefault("exclude_packages", [])
-    if not isinstance(cfg["exclude_packages"], list) or not all(
-        isinstance(p, str) for p in cfg["exclude_packages"]
-    ):
+    # Derive iso_volume_id from distro name if not set
+    if "iso_volume_id" not in cfg:
+        vol = re.sub(r"[^A-Za-z0-9_]", "_", cfg["distro_name"])[:32]
+        cfg["iso_volume_id"] = vol
+
+    if not re.fullmatch(r"[A-Za-z0-9_]{1,32}", cfg["iso_volume_id"]):
         raise BuildError(
-            "'exclude_packages' must be a JSON list of package name strings"
+            f"iso_volume_id must match [A-Za-z0-9_]{{1,32}}, got: {cfg['iso_volume_id']!r}"
         )
-    overlap = set(cfg["packages"]) & set(cfg["exclude_packages"])
-    if overlap:
-        raise BuildError(
-            "Package(s) listed in both 'packages' and 'exclude_packages': "
-            + ", ".join(sorted(overlap))
-        )
-
-    if "post_install_scripts" in cfg:
-        scripts = cfg["post_install_scripts"]
-        if not isinstance(scripts, list) or not all(
-            isinstance(s, str) for s in scripts
-        ):
-            raise BuildError("'post_install_scripts' must be a JSON list of strings")
-        cfg["post_install_scripts"] = scripts
-    elif "post_install_script" in cfg:
-        log(
-            "WARNING: 'post_install_script' (string) is deprecated, "
-            "use 'post_install_scripts' (list of strings) instead"
-        )
-        cfg["post_install_scripts"] = [cfg["post_install_script"]]
-    else:
-        raise BuildError("Config must contain 'post_install_scripts' (list of strings)")
-
-    # --- pre_chroot_scripts: host-side scripts run right after debootstrap,
-    cfg.setdefault("pre_chroot_scripts", [])
-    if not isinstance(cfg["pre_chroot_scripts"], list) or not all(
-        isinstance(s, str) for s in cfg["pre_chroot_scripts"]
-    ):
-        raise BuildError("'pre_chroot_scripts' must be a JSON list of strings")
-
-    # --- arch ---
-    cfg.setdefault("arch", "amd64")
-    if cfg["arch"] not in SUPPORTED_ARCHES:
-        raise BuildError(
-            f"'arch' must be one of {SUPPORTED_ARCHES}, got '{cfg['arch']}'"
-        )
-
-    # --- other optional fields with defaults ---
-    cfg.setdefault("hostname", cfg["distro_name"].lower().replace(" ", "-"))
-    cfg.setdefault("locale", "en_US.UTF-8")
-    cfg.setdefault("timezone", "UTC")
-    cfg.setdefault("root_password", None)
-    cfg.setdefault("live_username", None)
-    if cfg.get("live_username") and not cfg.get("live_user_password"):
-        cfg["live_user_password"] = cfg["live_username"]
-    cfg.setdefault("extra_apt_sources", [])
-    if not isinstance(cfg["extra_apt_sources"], list) or not all(
-        isinstance(source, str) for source in cfg["extra_apt_sources"]
-    ):
-        raise BuildError("'extra_apt_sources' must be a JSON list of strings")
-    cfg.setdefault("debootstrap_variant", None)
-    cfg.setdefault("kernel_package", KERNEL_PACKAGE_MAP[cfg["arch"]])
-    cfg.setdefault("squashfs_compression", "xz")
-    cfg.setdefault("boot_append", "quiet splash")
-    cfg.setdefault("iso_filename", None)
-    cfg.setdefault("iso_volume_id", None)
-    if cfg["iso_volume_id"] is not None:
-        vol_id = cfg["iso_volume_id"]
-        if not isinstance(vol_id, str) or not re.fullmatch(
-            r"[A-Za-z0-9_]{1,32}", vol_id
-        ):
-            raise BuildError(
-                "'iso_volume_id' must be 1-32 characters, "
-                "letters/digits/underscore only (leave unset to auto-generate one)"
-            )
 
     return cfg
 
 
+# ---------------------------------------------------------------------------
+# LiveBuilder
+# ---------------------------------------------------------------------------
+
+
 class LiveBuilder:
-    def __init__(self, cfg, workdir, outdir):
-        self.cfg = cfg
-        self.arch = cfg["arch"]
-        self.iso_volume_id = cfg["iso_volume_id"] or sanitize_volume_id(
-            cfg["distro_name"]
-        )
-        self.workdir = Path(workdir).resolve()
-        self.outdir = Path(outdir).resolve()
+    def __init__(
+        self, config: dict, workdir: str, outdir: str, keep_workdir: bool = False
+    ):
+        self.cfg = config
+        self.workdir = Path(workdir)
+        self.outdir = Path(outdir)
+        self.keep_workdir = keep_workdir
+        self.arch = config["architecture"]
 
-        self.chroot_dir = self.workdir / "chroot"
-        self.iso_tree = self.workdir / "iso"
-        self.mounted = []  # bind mounts currently active, for cleanup
+        self.chroot = self.workdir / "chroot"
+        self.iso_root = self.workdir / "iso"
 
-    # ---------- setup ----------
+    # ------------------------------------------------------------------
+    # Directory setup
+    # ------------------------------------------------------------------
 
     def prepare_dirs(self):
-        if self.workdir.exists():
-            shutil.rmtree(self.workdir)
-        self.workdir.mkdir(parents=True, exist_ok=True)
-        if self.outdir.exists():
-            shutil.rmtree(self.outdir)
-        self.outdir.mkdir(parents=True, exist_ok=True)
-        if self.chroot_dir.exists():
-            shutil.rmtree(self.chroot_dir)
-        self.chroot_dir.mkdir(parents=True, exist_ok=True)
-        (self.iso_tree / "live").mkdir(parents=True, exist_ok=True)
-        (self.iso_tree / "boot" / "grub").mkdir(parents=True, exist_ok=True)
+        with build_step("Preparing directories"):
+            for d in [
+                self.chroot,
+                self.iso_root / "live",
+                self.iso_root / "boot" / "grub",
+                self.iso_root / ".disk",
+            ]:
+                d.mkdir(parents=True, exist_ok=True)
+            self.outdir.mkdir(parents=True, exist_ok=True)
 
-    # ---------- debootstrap ----------
+    # ------------------------------------------------------------------
+    # debootstrap
+    # ------------------------------------------------------------------
 
     def run_debootstrap(self):
-        distro = self.cfg["debian_distro"]
-        mirror = self.cfg["apt_mirror"]
-        variant = self.cfg["debootstrap_variant"]
-
-        host = host_arch()
-        if self.arch != host:
-            raise BuildError(
-                f"Config arch '{self.arch}' does not match host arch '{host}'. "
-                f"This script only builds for the host's own architecture -- "
-                f"set 'arch' to '{host}', or build on a '{self.arch}' host."
-            )
-
-        log(
-            f"Running debootstrap for '{distro}' ({self.arch}) from {mirror} into {self.chroot_dir}"
-        )
-
-        if variant:
+        with build_step("Running debootstrap"):
             run(
                 [
                     "debootstrap",
-                    f"--arch={self.arch}",
-                    f"--variant={variant}",
-                    distro,
-                    str(self.chroot_dir),
-                    mirror,
-                ]
-            )
-        else:
-            run(
-                [
-                    "debootstrap",
-                    f"--arch={self.arch}",
-                    distro,
-                    str(self.chroot_dir),
-                    mirror,
+                    "--arch",
+                    self.arch,
+                    self.cfg["debian_distro"],
+                    str(self.chroot),
+                    self.cfg["apt_mirror"],
                 ]
             )
 
-    # ---------- apt config inside chroot ----------
+    # ------------------------------------------------------------------
+    # APT configuration
+    # ------------------------------------------------------------------
 
     def configure_apt(self):
-        distro = self.cfg["debian_distro"]
-        mirror = self.cfg["apt_mirror"]
-        sources = self.chroot_dir / "etc" / "apt" / "sources.list"
-        lines = [
-            f"deb {mirror} {distro} main contrib non-free non-free-firmware",
-            f"deb {mirror} {distro}-updates main contrib non-free non-free-firmware",
-        ]
-        lines.extend(self.cfg["extra_apt_sources"])
-        sources.write_text("\n".join(lines) + "\n")
+        with build_step("Configuring APT"):
+            sources = (
+                f"deb {self.cfg['apt_mirror']} {self.cfg['debian_distro']} "
+                "main contrib non-free non-free-firmware\n"
+            )
+            (self.chroot / "etc" / "apt" / "sources.list").write_text(sources)
+            self._chroot(["apt-get", "update"])
 
-        # basic resolv.conf so apt can resolve the mirror inside the chroot
-        resolv = self.chroot_dir / "etc" / "resolv.conf"
-        resolv.write_text("nameserver 8.8.8.8\nnameserver 1.1.1.1\n")
+    # ------------------------------------------------------------------
+    # Scripts
+    # ------------------------------------------------------------------
 
-        hostname = self.chroot_dir / "etc" / "hostname"
-        hostname.write_text(self.cfg["hostname"] + "\n")
+    def pre_chroot_scripts(self):
+        for script in self.cfg.get("pre_chroot_scripts", []):
+            with build_step(f"Pre-chroot script: {script}"):
+                run(["bash", script])
 
-        hosts = self.chroot_dir / "etc" / "hosts"
-        hosts.write_text(
-            "127.0.0.1   localhost\n"
-            f"127.0.1.1   {self.cfg['hostname']}\n"
-            "::1         localhost ip6-localhost ip6-loopback\n"
-        )
+    def post_install_scripts(self):
+        for script in self.cfg.get("post_install_scripts", []):
+            with build_step(f"Post-install script: {script}"):
+                dest = self.chroot / "tmp" / Path(script).name
+                shutil.copy2(script, dest)
+                dest.chmod(0o755)
+                self._chroot(["bash", f"/tmp/{Path(script).name}"])
+                dest.unlink(missing_ok=True)
 
-    # ---------- pre-chroot phase (host-side, rootfs not yet chrooted) ----------
-
-    def run_pre_chroot_scripts(self):
-        scripts = self.cfg["pre_chroot_scripts"]
-        if not scripts:
-            log("No pre_chroot_scripts provided, skipping")
-            return
-
-        scripts_dir = self.workdir / "pre_chroot_scripts"
-        scripts_dir.mkdir(parents=True, exist_ok=True)
-
-        env = os.environ.copy()
-        env["ROOTFS"] = str(self.chroot_dir)
-        env["ARCH"] = self.arch
-        env["DISTRO_NAME"] = self.cfg["distro_name"]
-
-        for i, script in enumerate(scripts, start=1):
-            if not script.strip():
-                continue
-            script_name = f"pre_chroot_{i:02d}.sh"
-            script_path = scripts_dir / script_name
-            script_path.write_text(script)
-            script_path.chmod(0o755)
-
-            with build_step(
-                f"Running pre-chroot script {i}/{len(scripts)} ({script_name})"
-            ):
-                run(["/bin/bash", str(script_path)], env=env)
-
-    # ---------- chroot mount management ----------
-
-    def bind_mount(self, host_path, chroot_relative_path):
-        """Bind-mount host_path onto chroot_relative_path inside the chroot.
-
-        Tracked in self.mounted so unmount_chroot() tears it back down
-        (in reverse order) along with everything else.
-        """
-        target = self.chroot_dir / chroot_relative_path.lstrip("/")
-        target.mkdir(parents=True, exist_ok=True)
-        run(["mount", "--bind", str(host_path), str(target)])
-        self.mounted.append(target)
-        return target
-
-    def mount_chroot(self):
-        for b in ["/dev", "/dev/pts", "/proc", "/sys"]:
-            self.bind_mount(b, b)
-
-    def unmount_chroot(self):
-        for target in reversed(self.mounted):
-            try:
-                run(["umount", "-lf", str(target)])
-            except subprocess.CalledProcessError:
-                log(f"WARNING: failed to unmount {target}, continuing")
-        self.mounted = []
-
-    def chroot_exec(self, bash_command):
-        """Run a shell command string inside the chroot."""
-        run(["chroot", str(self.chroot_dir), "/bin/bash", "-c", bash_command])
-
-    # ---------- package install ----------
+    # ------------------------------------------------------------------
+    # Package installation
+    # ------------------------------------------------------------------
 
     def install_packages(self):
-        iso_packages = list(ISO_BUILD_PACKAGES_COMMON)
-        if self.arch in BIOS_CAPABLE_ARCHES:
-            iso_packages += ISO_BUILD_PACKAGES_BIOS
-        iso_packages.append(GRUB_EFI_PACKAGE_MAP[self.arch])
-
-        all_packages = list(
-            dict.fromkeys(
-                self.cfg["packages"]
-                + [self.cfg["kernel_package"]]
-                + LIVE_BOOT_PACKAGES
-                + iso_packages
+        with build_step("Installing packages"):
+            pkgs = (
+                list(self.cfg["packages"])
+                + LIVE_PACKAGES
+                + [KERNEL_PACKAGES[self.arch]]
             )
-        )
+            if self.arch in GRUB_EFI_PACKAGES:
+                pkgs.append(GRUB_EFI_PACKAGES[self.arch])
+            if self.arch == "amd64":
+                pkgs += ["grub-pc-bin", "grub2-common"]
 
-        exclude = self.cfg["exclude_packages"]
-        install_args = all_packages + [f"{p}-" for p in exclude]
+            env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
+            self._chroot(
+                ["apt-get", "install", "-y", "--no-install-recommends"] + pkgs,
+                extra_env=env,
+            )
 
-        pkg_str = " ".join(shlex.quote(package) for package in install_args)
-        log(
-            f"Installing {len(all_packages)} packages inside chroot"
-            + (f" (excluding {len(exclude)}: {', '.join(exclude)})" if exclude else "")
-        )
-        self.chroot_exec(
-            "export DEBIAN_FRONTEND=noninteractive && "
-            "apt-get update && "
-            f"apt-get install -y {pkg_str} && "
-            "apt-get clean"
-        )
-
-    # ---------- locale / timezone / users ----------
+    # ------------------------------------------------------------------
+    # System configuration
+    # ------------------------------------------------------------------
 
     def configure_system(self):
-        locale = self.cfg["locale"]
-        timezone = self.cfg["timezone"]
-        log(f"Configuring locale ({locale}) and timezone ({timezone})")
+        with build_step("Configuring system"):
+            # Locale
+            locale = self.cfg["locale"]
+            locale_gen = self.chroot / "etc" / "locale.gen"
+            lines = locale_gen.read_text() if locale_gen.exists() else ""
+            if f"# {locale}" in lines:
+                lines = lines.replace(f"# {locale}", locale)
+            else:
+                lines += f"\n{locale} UTF-8\n"
+            locale_gen.write_text(lines)
+            self._chroot(["locale-gen"])
+            (self.chroot / "etc" / "locale.conf").write_text(f"LANG={locale}\n")
 
-        locale_q = shlex.quote(locale)
-        timezone_q = shlex.quote(timezone)
-        self.chroot_exec(
-            f"grep -qxF {shlex.quote(locale + ' UTF-8')} /etc/locale.gen || "
-            f"echo {shlex.quote(locale + ' UTF-8')} >> /etc/locale.gen; "
-            f"locale-gen && update-locale LANG={locale_q}"
-        )
-        self.chroot_exec(
-            f"ln -sf /usr/share/zoneinfo/{timezone_q} /etc/localtime && "
-            f"echo {timezone_q} > /etc/timezone && "
-            f"dpkg-reconfigure -f noninteractive tzdata || true"
-        )
+            # Timezone
+            tz = self.cfg["timezone"]
+            tz_file = self.chroot / "usr" / "share" / "zoneinfo" / tz
+            localtime = self.chroot / "etc" / "localtime"
+            if localtime.exists() or localtime.is_symlink():
+                localtime.unlink()
+            localtime.symlink_to(f"/usr/share/zoneinfo/{tz}")
+            (self.chroot / "etc" / "timezone").write_text(tz + "\n")
 
-        root_password = self.cfg["root_password"]
-        if root_password:
-            log("Setting root password")
-            self.chroot_exec(f"echo 'root:{root_password}' | chpasswd")
-        else:
-            log("No root_password set, locking root account")
-            self.chroot_exec("passwd -l root || true")
-
-        live_user = self.cfg["live_username"]
-        if live_user:
-            log(f"Creating live user '{live_user}'")
-            self.chroot_exec(
-                f"useradd -m -s /bin/bash {live_user} || true && "
-                f"echo '{live_user}:{self.cfg['live_user_password']}' | chpasswd && "
-                f"echo '{live_user} ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/{live_user}"
+            # Hostname
+            (self.chroot / "etc" / "hostname").write_text(
+                self.cfg["distro_name"].lower() + "\n"
             )
 
-    # ---------- post-install scripts ----------
-
-    def run_post_install_scripts(self):
-        scripts = self.cfg["post_install_scripts"]
-        if not scripts:
-            log("No post_install_scripts provided, skipping")
-            return
-
-        tmp_dir = self.chroot_dir / "tmp"
-        for i, script in enumerate(scripts, start=1):
-            if not script.strip():
-                continue
-            script_name = f"post_install_{i:02d}.sh"
-            script_path_host = tmp_dir / script_name
-            script_path_host.write_text(script)
-            script_path_host.chmod(0o755)
-
-            with build_step(
-                f"Running post-install script {i}/{len(scripts)} ({script_name})"
-            ):
-                self.chroot_exec(f"/bin/bash /tmp/{script_name}")
-            script_path_host.unlink(missing_ok=True)
-
-    # ---------- cleanup chroot artifacts before squashing ----------
+    # ------------------------------------------------------------------
+    # Chroot cleanup
+    # ------------------------------------------------------------------
 
     def cleanup_chroot(self):
-        log("Cleaning up chroot (apt cache, machine-id, resolv.conf)")
-        self.chroot_exec(
-            "apt-get clean && "
-            "rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && "
-            "truncate -s 0 /etc/machine-id || true"
-        )
-        resolv = self.chroot_dir / "etc" / "resolv.conf"
-        resolv.write_text("")
+        with build_step("Cleaning chroot"):
+            env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
+            self._chroot(["apt-get", "clean"], extra_env=env)
+            for p in (self.chroot / "var" / "cache" / "apt" / "archives").glob("*.deb"):
+                p.unlink(missing_ok=True)
+            for p in (self.chroot / "tmp").glob("*"):
+                if p.is_file():
+                    p.unlink(missing_ok=True)
 
-    # ---------- squashfs + kernel/initrd extraction ----------
+    # ------------------------------------------------------------------
+    # Kernel / initrd export
+    # ------------------------------------------------------------------
 
     def export_kernel_and_initrd(self):
-        boot_dir = self.chroot_dir / "boot"
-        live_dir = self.iso_tree / "live"
+        with build_step("Exporting kernel and initrd"):
+            vmlinuz_list = sorted((self.chroot / "boot").glob("vmlinuz-*"))
+            initrd_list = sorted((self.chroot / "boot").glob("initrd.img-*"))
+            if not vmlinuz_list:
+                raise BuildError("No kernel found in chroot/boot/")
+            if not initrd_list:
+                raise BuildError("No initrd found in chroot/boot/")
+            shutil.copy2(vmlinuz_list[-1], self.iso_root / "live" / "vmlinuz")
+            shutil.copy2(initrd_list[-1], self.iso_root / "live" / "initrd")
+            print(f"  Kernel : {vmlinuz_list[-1].name}")
+            print(f"  Initrd : {initrd_list[-1].name}")
 
-        vmlinuz = sorted(boot_dir.glob("vmlinuz-*"))
-        initrd = sorted(boot_dir.glob("initrd.img-*"))
-        if not vmlinuz or not initrd:
-            raise BuildError(
-                "Could not find kernel/initrd in chroot /boot; "
-                "is the kernel package installed correctly?"
-            )
-
-        shutil.copy(vmlinuz[-1], live_dir / "vmlinuz")
-        shutil.copy(initrd[-1], live_dir / "initrd")
-        log(f"Copied kernel {vmlinuz[-1].name} and initrd {initrd[-1].name}")
+    # ------------------------------------------------------------------
+    # Squashfs
+    # ------------------------------------------------------------------
 
     def build_squashfs(self):
-        live_dir = self.iso_tree / "live"
-        squashfs_path = live_dir / "filesystem.squashfs"
-        comp = self.cfg["squashfs_compression"]
-        log(
-            f"Building squashfs ({comp}) of the chroot filesystem (this can take a while)"
-        )
-        run(
-            [
-                "mksquashfs",
-                str(self.chroot_dir),
-                str(squashfs_path),
-                "-comp",
-                comp,
-                "-e",
-                "boot",
-                "-noappend",
-            ]
-        )
+        with build_step("Building squashfs"):
+            squashfs_path = self.iso_root / "live" / "filesystem.squashfs"
+            squashfs_path.unlink(missing_ok=True)
+            run(
+                [
+                    "mksquashfs",
+                    str(self.chroot),
+                    str(squashfs_path),
+                    "-comp",
+                    self.cfg["squashfs_compression"],
+                    "-e",
+                    "boot",
+                    "-noappend",
+                ]
+            )
 
-    # ---------- boot config (grub.cfg, shared by both BIOS and EFI) ----------
+    # ------------------------------------------------------------------
+    # GRUB config
+    # ------------------------------------------------------------------
 
     def write_boot_configs(self):
-        name = self.cfg["distro_name"]
-        version = self.cfg["version"]
-        label = f"{name} {version}".strip()
-        boot_append = self.cfg["boot_append"]
+        with build_step("Writing GRUB configuration"):
+            vol_id = self.cfg["iso_volume_id"]
+            distro = self.cfg["distro_name"]
+            version = self.cfg["version"]
+            splash = self.cfg.get("splash", "")
+            splash_param = f"splash {splash}".strip() if splash else ""
 
-        (self.iso_tree / "boot" / "grub" / "grub.cfg").write_text(f"""\
-set timeout=5
+            grub_cfg = f"""\
 set default=0
+set timeout=5
+set gfxpayload=keep
 
-menuentry "{label} (live)" {{
-    linux /live/vmlinuz boot=live components {boot_append}
+# Locate the ISO root — works under Ventoy, direct boot, and QEMU.
+# We try three methods in order; the first to succeed sets $root.
+if search --no-floppy --set=root --label "{vol_id}" ; then
+    echo "Found ISO root by volume label: {vol_id}"
+elif search --no-floppy --set=root --file /live/filesystem.squashfs ; then
+    echo "Found ISO root by filesystem marker"
+else
+    echo "WARNING: could not locate ISO root; boot may fail"
+fi
+
+menuentry "{distro} {version} (live)" {{
+    linux  /live/vmlinuz boot=live components quiet {splash_param}
     initrd /live/initrd
 }}
-""")
 
-    # ---------- final ISO build ----------
+menuentry "{distro} {version} (live, nomodeset)" {{
+    linux  /live/vmlinuz boot=live components quiet nomodeset {splash_param}
+    initrd /live/initrd
+}}
+
+menuentry "{distro} {version} (live, debug)" {{
+    linux  /live/vmlinuz boot=live components
+    initrd /live/initrd
+}}
+"""
+            (self.iso_root / "boot" / "grub" / "grub.cfg").write_text(grub_cfg)
+            (self.iso_root / ".disk" / "info").write_text(
+                f"{distro} {version} - Live\n"
+            )
+
+    # ------------------------------------------------------------------
+    # ISO assembly
+    # ------------------------------------------------------------------
+
+    def _find_grub_lib(self, grub_arch: str) -> Path:
+        """Return the path to pre-built GRUB modules for grub_arch."""
+        for base in ("/usr/lib/grub", "/usr/share/grub"):
+            p = Path(base) / grub_arch
+            if p.is_dir():
+                return p
+        raise BuildError(f"GRUB module directory not found for arch '{grub_arch}'")
 
     def build_iso(self):
+        with build_step("Building ISO image"):
+            vol_id = self.cfg["iso_volume_id"]
+            distro = self.cfg["distro_name"]
+            version = self.cfg["version"]
+            grub_dir = self.iso_root / "boot" / "grub"
 
-        name = self.cfg["distro_name"].lower().replace(" ", "-")
-        version = self.cfg["version"]
-        iso_name = self.cfg["iso_filename"] or f"{name}-{version}-{self.arch}.iso"
-        iso_path = self.outdir / iso_name
-
-        log(f"Building ISO ({self.arch}) with grub-mkrescue: {iso_path}")
-
-        iso_tree_rel = self.iso_tree.relative_to(self.workdir)
-        tmp_iso_name = "grub-mkrescue-output.iso"
-
-        self.mount_chroot()  # grub-mkrescue's internal mkfs.vfat step needs /dev
-        self.bind_mount(self.workdir, "mnt/iso_build")
-        try:
-            self.chroot_exec(
-                f"grub-mkrescue "
-                f"-o /mnt/iso_build/{tmp_iso_name} "
-                f"/mnt/iso_build/{iso_tree_rel} "
-                f'-- -volid "{self.iso_volume_id}"'
+            # ----------------------------------------------------------
+            # The early config is embedded directly into the GRUB core
+            # image.  Using search here — rather than a hardcoded
+            # (cd) or (hd0) device — is what fixes the Ventoy
+            # "you must load the kernel first" error on real hardware:
+            # Ventoy remaps device handles so a hardcoded device alias
+            # never resolves, but search finds the volume by label or
+            # by the presence of a known file regardless of remapping.
+            # ----------------------------------------------------------
+            early_cfg = (
+                f'search --no-floppy --set=root --label "{vol_id}"\n'
+                f'if [ -z "$root" ]; then\n'
+                f"    search --no-floppy --set=root --file /live/filesystem.squashfs\n"
+                f"fi\n"
+                f"set prefix=($root)/boot/grub\n"
             )
-        finally:
-            self.unmount_chroot()
 
-        produced = self.workdir / tmp_iso_name
-        if not produced.exists():
-            raise BuildError(f"grub-mkrescue did not produce an ISO at {produced}")
-        shutil.move(str(produced), str(iso_path))
-        return iso_path
+            xorriso_args = [
+                "xorriso",
+                "-as",
+                "mkisofs",
+                "-iso-level",
+                "3",
+                "-volid",
+                vol_id,
+                "-full-iso9660-filenames",
+                "-rational-rock",
+                "-joliet",
+            ]
 
-    # ---------- orchestration ----------
+            # ----------------------------------------------------------
+            # BIOS boot (i386-pc) — amd64 only
+            # ----------------------------------------------------------
+            if self.arch == "amd64":
+                grub_bios_arch = "i386-pc"
+                grub_bios_lib = self._find_grub_lib(grub_bios_arch)
+
+                # Copy BIOS modules into the ISO tree
+                bios_mod_dst = grub_dir / grub_bios_arch
+                bios_mod_dst.mkdir(parents=True, exist_ok=True)
+                for mod in Path(grub_bios_lib).glob("*.mod"):
+                    shutil.copy2(mod, bios_mod_dst / mod.name)
+                # Also copy .lst files (module dependency lists)
+                for lst in Path(grub_bios_lib).glob("*.lst"):
+                    shutil.copy2(lst, bios_mod_dst / lst.name)
+
+                # Build standalone BIOS core image with early config baked in
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".cfg", delete=False
+                ) as ecfg:
+                    ecfg.write(early_cfg)
+                    early_cfg_path = ecfg.name
+
+                bios_core = grub_dir / "bios.img"
+                cdboot = Path(grub_bios_lib) / "cdboot.img"
+                bios_core_raw = grub_dir / "core_bios.img"
+
+                try:
+                    run(
+                        [
+                            "grub-mkimage",
+                            "--format",
+                            grub_bios_arch,
+                            "--output",
+                            str(bios_core_raw),
+                            "--prefix",
+                            "/boot/grub",
+                            "--config",
+                            early_cfg_path,
+                            "--directory",
+                            str(grub_bios_lib),
+                        ]
+                        + GRUB_BIOS_MODULES
+                    )
+                finally:
+                    Path(early_cfg_path).unlink(missing_ok=True)
+
+                # Concatenate cdboot.img + core.img → bios.img
+                with open(bios_core, "wb") as out_f:
+                    out_f.write(cdboot.read_bytes())
+                    out_f.write(bios_core_raw.read_bytes())
+                bios_core_raw.unlink(missing_ok=True)
+
+                # Locate boot_hybrid.img for MBR
+                boot_hybrid = Path(grub_bios_lib) / "boot_hybrid.img"
+                if not boot_hybrid.exists():
+                    boot_hybrid = Path("/usr/lib/grub/i386-pc/boot_hybrid.img")
+                if not boot_hybrid.exists():
+                    raise BuildError("boot_hybrid.img not found — install grub-pc-bin")
+
+                xorriso_args += [
+                    "-eltorito-boot",
+                    "boot/grub/bios.img",
+                    "-no-emul-boot",
+                    "-boot-load-size",
+                    "4",
+                    "-boot-info-table",
+                    "--grub2-boot-info",
+                    "--grub2-mbr",
+                    str(boot_hybrid),
+                ]
+
+            # ----------------------------------------------------------
+            # EFI boot
+            # ----------------------------------------------------------
+            if self.arch in GRUB_EFI_FORMAT:
+                efi_arch = GRUB_EFI_FORMAT[self.arch]
+                efi_binary = GRUB_EFI_BINARY[self.arch]
+                grub_efi_lib = self._find_grub_lib(efi_arch)
+
+                # Copy EFI modules into the ISO tree
+                efi_mod_dst = grub_dir / efi_arch
+                efi_mod_dst.mkdir(parents=True, exist_ok=True)
+                for mod in Path(grub_efi_lib).glob("*.mod"):
+                    shutil.copy2(mod, efi_mod_dst / mod.name)
+                for lst in Path(grub_efi_lib).glob("*.lst"):
+                    shutil.copy2(lst, efi_mod_dst / lst.name)
+
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".cfg", delete=False
+                ) as ecfg:
+                    ecfg.write(early_cfg)
+                    early_cfg_path = ecfg.name
+
+                efi_out = grub_dir / efi_binary
+                try:
+                    run(
+                        [
+                            "grub-mkimage",
+                            "--format",
+                            efi_arch,
+                            "--output",
+                            str(efi_out),
+                            "--prefix",
+                            "/boot/grub",
+                            "--config",
+                            early_cfg_path,
+                            "--directory",
+                            str(grub_efi_lib),
+                        ]
+                        + GRUB_EFI_MODULES
+                    )
+                finally:
+                    Path(early_cfg_path).unlink(missing_ok=True)
+
+                # Build a FAT12 ESP image and put the EFI binary inside it
+                efi_img = grub_dir / "efi.img"
+                efi_img.unlink(missing_ok=True)
+                # Size: 1.44 MB is sufficient for a standalone EFI binary
+                run(["dd", "if=/dev/zero", f"of={efi_img}", "bs=1k", "count=1440"])
+                run(["mkfs.vfat", "-F", "12", "-n", "GRUB_EFI", str(efi_img)])
+                run(["mmd", "-i", str(efi_img), "::/EFI", "::/EFI/BOOT"])
+                run(
+                    [
+                        "mcopy",
+                        "-i",
+                        str(efi_img),
+                        str(efi_out),
+                        f"::/EFI/BOOT/{efi_binary}",
+                    ]
+                )
+
+                xorriso_args += [
+                    "-eltorito-alt-boot",
+                    "-e",
+                    "boot/grub/efi.img",
+                    "-no-emul-boot",
+                    "-isohybrid-gpt-basdat",
+                ]
+
+            # ----------------------------------------------------------
+            # Final xorriso invocation
+            # ----------------------------------------------------------
+            iso_name = f"{distro}-{version}-{self.arch}.iso"
+            iso_out = self.outdir / iso_name
+            xorriso_args += ["-output", str(iso_out), str(self.iso_root)]
+            run(xorriso_args)
+            print(f"\n  ISO written to: {iso_out}")
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _chroot(self, cmd, extra_env=None):
+        env = extra_env or os.environ.copy()
+        run(["chroot", str(self.chroot)] + cmd, env=env)
+
+    # ------------------------------------------------------------------
+    # Main pipeline
+    # ------------------------------------------------------------------
 
     def build(self):
         try:
-            with build_step("Preparing build directories"):
-                self.prepare_dirs()
-            with build_step("Running debootstrap"):
-                self.run_debootstrap()
-            with build_step("Configuring apt sources"):
-                self.configure_apt()
-            self.run_pre_chroot_scripts()
-            with build_step("Mounting chroot filesystems"):
-                self.mount_chroot()
-            with build_step("Installing packages in chroot"):
-                self.install_packages()
-            with build_step("Configuring locale/timezone/users"):
-                self.configure_system()
-            self.run_post_install_scripts()
-            with build_step("Cleaning up chroot"):
-                self.cleanup_chroot()
-        finally:
-            with build_step("Unmounting chroot filesystems"):
-                self.unmount_chroot()
-
-        with build_step("Exporting kernel and initrd"):
+            self.prepare_dirs()
+            self.run_debootstrap()
+            self.configure_apt()
+            self.pre_chroot_scripts()
+            self.install_packages()
+            self.configure_system()
+            self.post_install_scripts()
+            self.cleanup_chroot()
             self.export_kernel_and_initrd()
-        with build_step("Building squashfs"):
             self.build_squashfs()
-        with build_step("Writing bootloader configs"):
             self.write_boot_configs()
-        with build_step("Building final ISO"):
-            return self.build_iso()
+            self.build_iso()
+            print("\n✓ Build complete.")
+        finally:
+            if not self.keep_workdir:
+                shutil.rmtree(self.workdir, ignore_errors=True)
 
 
-def parse_args():
-    p = argparse.ArgumentParser(
-        description="Build a custom Debian live ISO from a JSON config."
-    )
-    p.add_argument("config", help="Path to JSON config file")
-    p.add_argument(
-        "--workdir",
-        default=None,
-        help="Working directory for chroot/build files (default: temp dir)",
-    )
-    p.add_argument(
-        "--outdir",
-        default="./output",
-        help="Directory to place the final ISO in (default: ./output)",
-    )
-    p.add_argument(
-        "--keep-workdir",
-        action="store_true",
-        help="Don't delete the working directory (chroot) after building, "
-        "useful for debugging a failed build",
-    )
-    p.add_argument(
-        "--version",
-        action="version",
-        version="PersisOS live ISO builder 1.0",
-    )
-    return p.parse_args()
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def main():
-    args = parse_args()
-    builder = None
-    try:
-        require_root()
-        for tool in (
-            "debootstrap",
-            "chroot",
-            "mksquashfs",
-            "mount",
-            "umount",
-            "dpkg",
-        ):
-            require_tool(tool)
+    parser = argparse.ArgumentParser(description="PersisOS live ISO builder")
+    parser.add_argument("config", help="Path to JSON build config")
+    parser.add_argument(
+        "--workdir", default=None, help="Working directory (default: temp dir)"
+    )
+    parser.add_argument(
+        "--outdir", default="./output", help="Output directory for the ISO"
+    )
+    parser.add_argument(
+        "--keep-workdir", action="store_true", help="Do not delete workdir after build"
+    )
+    args = parser.parse_args()
 
-        cfg = load_config(args.config)
+    require_root()
+    for tool in HOST_BUILD_TOOLS:
+        require_tool(tool)
 
-        workdir = args.workdir or tempfile.mkdtemp(prefix="live-build-")
-        builder = LiveBuilder(cfg, workdir, args.outdir)
+    cfg = load_config(args.config)
 
-        log(
-            f"Distro: {cfg['distro_name']} {cfg['version']} "
-            f"(arch: {cfg['arch']}, base: {cfg['debian_distro']})"
-        )
-        log(f"Workdir: {builder.workdir}")
-        log(f"Output dir: {builder.outdir}")
-
-        iso_path = builder.build()
-        log(f"Done! ISO created at: {iso_path}")
-        return 0
-
-    except BuildError as e:
-        print("\n[build_live_iso] BUILD FAILED", file=sys.stderr)
-        print(f"[build_live_iso] {e}", file=sys.stderr)
-        return 1
-
-    except KeyboardInterrupt:
-        print("\n[build_live_iso] Interrupted by user", file=sys.stderr)
-        return 130
-
-    except Exception:
-        print(
-            "\n[build_live_iso] UNEXPECTED ERROR (please report this)", file=sys.stderr
-        )
-        traceback.print_exc()
-        return 2
-
-    finally:
-        if builder is not None:
-            builder.unmount_chroot()
-            if not args.keep_workdir and not args.workdir:
-                log(f"Cleaning up temporary workdir {builder.workdir}")
-                shutil.rmtree(builder.workdir, ignore_errors=True)
+    if args.workdir:
+        workdir = args.workdir
+        Path(workdir).mkdir(parents=True, exist_ok=True)
+        builder = LiveBuilder(cfg, workdir, args.outdir, keep_workdir=args.keep_workdir)
+        builder.build()
+    else:
+        with tempfile.TemporaryDirectory(prefix="persisOS_build_") as tmpdir:
+            builder = LiveBuilder(
+                cfg, tmpdir, args.outdir, keep_workdir=args.keep_workdir
+            )
+            builder.build()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        main()
+    except BuildError as e:
+        print(f"\n✗ Build failed: {e}", file=sys.stderr)
+        sys.exit(1)
