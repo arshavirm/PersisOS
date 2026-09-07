@@ -125,10 +125,15 @@ class BuildError(Exception):
 
 def run(cmd, **kwargs):
     """Run a command, raising BuildError on failure."""
+    kwargs.setdefault("text", True)
+    kwargs.setdefault("capture_output", False)
     result = subprocess.run(cmd, **kwargs)
     if result.returncode != 0:
+        detail = ""
+        if getattr(result, "stderr", None):
+            detail = f"\n{result.stderr.strip()}"
         raise BuildError(
-            f"Command failed (exit {result.returncode}): {' '.join(str(c) for c in cmd)}"
+            f"Command failed (exit {result.returncode}): {' '.join(str(c) for c in cmd)}{detail}"
         )
     return result
 
