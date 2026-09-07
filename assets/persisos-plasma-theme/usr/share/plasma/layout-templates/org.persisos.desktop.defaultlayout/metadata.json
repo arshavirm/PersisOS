@@ -6,7 +6,7 @@
                 "Name": "PersisOS"
             }
         ],
-        "Description": "Top panel, not floating, with the PersisOS default widget set.",
+        "Description": "A top, full-width panel with the PersisOS default widget set.",
         "Id": "org.persisos.desktop.defaultlayout",
         "License": "MIT",
         "Name": "PersisOS 2.0 Default",

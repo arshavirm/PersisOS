@@ -23,7 +23,7 @@ for (var p = 0; p < existingPanels.length; p++) {
 var panel = new plasma.Panel()
 panel.location = 'top'
 panel.height = gridUnit * 2.2
-panel.floating = true
+panel.floating = false
 panel.alignment = 'left'
 panel.lengthMode = 'fill'
 
@@ -43,4 +43,4 @@ panel.addWidget('org.kde.plasma.digitalclock')
 var showdesktop = panel.addWidget('org.kde.plasma.showdesktop')
 
 panel.currentConfigGroup = ['General']
-panel.writeConfig('floating', true)
+panel.writeConfig('floating', false)

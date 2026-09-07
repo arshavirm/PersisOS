@@ -27,15 +27,21 @@ log() {
 }
 
 log "Applying PersisOS global theme..."
-plasma-apply-lookandfeel -a org.persisos.desktop || true
+if command -v plasma-apply-lookandfeel >/dev/null 2>&1; then
+    plasma-apply-lookandfeel -a org.persisos.desktop
+fi
 
 log "Applying PersisOS panel and wallpaper layout..."
-plasma-apply-layouttemplate org.persisos.desktop.defaultlayout || true
+if command -v plasma-apply-layouttemplate >/dev/null 2>&1; then
+    plasma-apply-layouttemplate org.persisos.desktop.defaultlayout
+else
+    log "Warning: plasma-apply-layouttemplate is unavailable; keeping Plasma defaults."
+fi
 
 # Keep the icon setting explicit even when a user's existing KDE config wins
 # over /etc/xdg defaults.
 if command -v kwriteconfig6 >/dev/null 2>&1; then
-    kwriteconfig6 --file "$config_home/kdeglobals" --group Icons --key Theme breeze
+        kwriteconfig6 --file "$config_home/kdeglobals" --group Icons --key Theme breeze
 elif command -v kwriteconfig5 >/dev/null 2>&1; then
     kwriteconfig5 --file "$config_home/kdeglobals" --group Icons --key Theme breeze
 fi
