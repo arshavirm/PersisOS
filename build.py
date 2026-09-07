@@ -186,8 +186,17 @@ def load_config(path: str) -> dict:
     if missing:
         raise BuildError(f"Config missing required keys: {', '.join(missing)}")
 
+    # Older configs use the shorter ``arch`` key.  Keep it compatible while
+    # exposing one canonical value to the builder.
+    if "architecture" not in cfg and "arch" in cfg:
+        cfg["architecture"] = cfg["arch"]
     for k, v in DEFAULTS.items():
         cfg.setdefault(k, v)
+    if cfg["architecture"] not in KERNEL_PACKAGES:
+        raise BuildError(
+            f"Unsupported architecture {cfg['architecture']!r}; "
+            f"choose one of: {', '.join(sorted(KERNEL_PACKAGES))}"
+        )
 
     # Derive iso_volume_id from distro name if not set
     if "iso_volume_id" not in cfg:
@@ -272,16 +281,35 @@ class LiveBuilder:
     def pre_chroot_scripts(self):
         for script in self.cfg.get("pre_chroot_scripts", []):
             with build_step(f"Pre-chroot script: {script}"):
-                run(["bash", script])
+                self._run_script(script, rootfs_env=True)
 
     def post_install_scripts(self):
         for script in self.cfg.get("post_install_scripts", []):
             with build_step(f"Post-install script: {script}"):
-                dest = self.chroot / "tmp" / Path(script).name
-                shutil.copy2(script, dest)
-                dest.chmod(0o755)
-                self._chroot(["bash", f"/tmp/{Path(script).name}"])
-                dest.unlink(missing_ok=True)
+                self._run_script(script)
+
+    def _run_script(self, script, rootfs_env=False):
+        """Run either an inline shell script or a path from the config."""
+        script = str(script)
+        if "\n" in script or script.lstrip().startswith("#!"):
+            if rootfs_env:
+                env = {**os.environ, "ROOTFS": str(self.chroot)}
+                run(["bash", "-c", script], env=env)
+            else:
+                self._chroot(["bash", "-c", script])
+            return
+        path = Path(script)
+        if not path.is_file():
+            raise BuildError(f"Configured script not found: {script}")
+        if rootfs_env:
+            env = {**os.environ, "ROOTFS": str(self.chroot)}
+            run(["bash", str(path)], env=env)
+        else:
+            dest = self.chroot / "tmp" / path.name
+            shutil.copy2(path, dest)
+            dest.chmod(0o755)
+            self._chroot(["bash", f"/tmp/{path.name}"])
+            dest.unlink(missing_ok=True)
 
     # ------------------------------------------------------------------
     # Package installation
@@ -333,9 +361,8 @@ class LiveBuilder:
             (self.chroot / "etc" / "timezone").write_text(tz + "\n")
 
             # Hostname
-            (self.chroot / "etc" / "hostname").write_text(
-                self.cfg["distro_name"].lower() + "\n"
-            )
+            hostname = self.cfg.get("hostname") or self.cfg["distro_name"].lower()
+            (self.chroot / "etc" / "hostname").write_text(hostname + "\n")
 
     # ------------------------------------------------------------------
     # Chroot cleanup
@@ -398,8 +425,7 @@ class LiveBuilder:
             vol_id = self.cfg["iso_volume_id"]
             distro = self.cfg["distro_name"]
             version = self.cfg["version"]
-            splash = self.cfg.get("splash", "")
-            splash_param = f"splash {splash}".strip() if splash else ""
+            boot_append = self.cfg.get("boot_append", "quiet splash").strip()
 
             grub_cfg = f"""\
 set default=0
@@ -417,12 +443,12 @@ else
 fi
 
 menuentry "{distro} {version} (live)" {{
-    linux  /live/vmlinuz boot=live components quiet {splash_param}
+    linux  /live/vmlinuz boot=live components {boot_append}
     initrd /live/initrd
 }}
 
 menuentry "{distro} {version} (live, nomodeset)" {{
-    linux  /live/vmlinuz boot=live components quiet nomodeset {splash_param}
+    linux  /live/vmlinuz boot=live components {boot_append} nomodeset
     initrd /live/initrd
 }}
 

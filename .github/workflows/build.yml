@@ -36,6 +36,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Validate configuration
+        run: python3 -m json.tool PersisOS-2.0-${{ matrix.arch }}.json >/dev/null
+
       - name: Build ISO (${{ matrix.arch }})
         run: |
           docker run --rm --privileged \
@@ -44,6 +47,8 @@ jobs:
             -w /work \
             debian:trixie \
             bash -c "
+              set -euo pipefail && \
+              export DEBIAN_FRONTEND=noninteractive && \
               apt-get update -qq && \
               apt-get install -y --no-install-recommends \
                 debootstrap squashfs-tools grub2-common \
@@ -57,3 +62,4 @@ jobs:
         with:
           name: persisos-${{ matrix.arch }}
           path: output/
+          if-no-files-found: error
