@@ -5,44 +5,55 @@ on:
     types: [published]
 
 permissions:
-  contents: write   
+  contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
           - arch: amd64
             platform: linux/amd64
+            runner: ubuntu-latest
           - arch: arm64
             platform: linux/arm64
+            runner: ubuntu-24.04-arm
+
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
+        if: matrix.arch == 'amd64'
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
 
-      - name: Build Process
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ISO (${{ matrix.arch }})
         run: |
-          docker run --rm \
-            --privileged \
+          docker run --rm --privileged \
             --platform ${{ matrix.platform }} \
-            -v "${{ github.workspace }}":/workspace \
+            -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             debian:trixie \
             bash -c "
-              export DEBIAN_FRONTEND=noninteractive &&
-              apt-get update -qq &&
-              apt-get install -y --no-install-recommends debootstrap squashfs-tools grub2-common xorriso mtools python3 &&
-              python3 build.py PersisOS-2.0-${{ matrix.arch }}.json --workdir build --outdir output
+              export DEBIAN_FRONTEND=noninteractive && \
+              apt-get update -qq && \
+              apt-get install -y --no-install-recommends \
+                debootstrap squashfs-tools grub2-common \
+                xorriso mtools dosfstools python3 && \
+              python3 build.py PersisOS-2.0-${{ matrix.arch }}.json \
+                --workdir build --outdir output
             "
 
-      - name: Upload ISO to the release
+      - name: Upload ISO to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
