@@ -53,7 +53,7 @@ HOST_BUILD_TOOLS = [
     "mksquashfs",
     "xorriso",
     "mtools",
-    "dosfstools",
+    "mkdosfs",
     "grub-mkimage",
     "mkfs.vfat",
 ]
