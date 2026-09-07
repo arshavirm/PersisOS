@@ -50,9 +50,8 @@ jobs:
               set -euo pipefail && \
               export DEBIAN_FRONTEND=noninteractive && \
               apt-get update -qq && \
-              apt-get install -y --no-install-recommends \
+              apt-get install -y \
                 debootstrap squashfs-tools grub2-common \
-                grub-pc-bin grub-efi-${{ matrix.arch }}-bin \
                 xorriso mtools dosfstools python3 && \
               python3 build.py PersisOS-2.0-${{ matrix.arch }}.json \
                 --workdir build --outdir output
