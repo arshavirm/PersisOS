@@ -26,19 +26,16 @@ log() {
     [ "$quiet" -eq 1 ] || printf '%s\n' "$*"
 }
 
-log "Applying PersisOS global theme..."
-if command -v plasma-apply-lookandfeel >/dev/null 2>&1; then
-    plasma-apply-lookandfeel -a org.persisos.desktop
-fi
-
-log "Applying PersisOS panel and wallpaper layout..."
+log "Applying PersisOS global theme, panel, and wallpaper..."
 layout_applied=0
-if command -v plasma-apply-layouttemplate >/dev/null 2>&1; then
-    if plasma-apply-layouttemplate org.persisos.desktop.defaultlayout; then
+if command -v plasma-apply-lookandfeel >/dev/null 2>&1; then
+    # Plasma 6 applies a look-and-feel package's layout only when explicitly
+    # asked to reset the layout.  This creates the panel and sets the wallpaper.
+    if plasma-apply-lookandfeel -a org.persisos.desktop --resetLayout; then
         layout_applied=1
     fi
 else
-    log "Warning: plasma-apply-layouttemplate is unavailable; retrying on next session."
+    log "Warning: plasma-apply-lookandfeel is unavailable; retrying on next session."
 fi
 
 # Keep the icon setting explicit even when a user's existing KDE config wins

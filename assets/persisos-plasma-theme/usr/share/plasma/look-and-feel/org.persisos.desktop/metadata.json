@@ -7,7 +7,7 @@
             }
         ],
         "Category": "",
-        "Description": "The default PersisOS desktop look and feel: top panel layout, PersisOS wallpaper slideshow and splash screen.",
+        "Description": "The default PersisOS desktop look and feel: top panel layout, Mountain Lake wallpaper and splash screen.",
         "Id": "org.persisos.desktop",
         "License": "MIT",
         "Name": "PersisOS 2.0",

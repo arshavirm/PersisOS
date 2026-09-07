@@ -1,13 +1,11 @@
 // PersisOS default desktop layout
 
-var plasma = getApiVersion(1)
-
 var allDesktops = desktops()
 for (var i = 0; i < allDesktops.length; i++) {
   var d = allDesktops[i]
   d.wallpaperPlugin = 'org.kde.image'
   d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General']
-  d.writeConfig('Image', '/usr/share/wallpapers/PersisOS-1/contents/images/2560x1600.png')
+  d.writeConfig('Image', 'file:///usr/share/wallpapers/PersisOS-1/contents/images/2560x1600.png')
   d.writeConfig('FillMode', 2)
 }
 
@@ -16,7 +14,7 @@ for (var p = 0; p < existingPanels.length; p++) {
   existingPanels[p].remove()
 }
 
-var panel = new plasma.Panel()
+var panel = new Panel
 panel.location = 'top'
 panel.height = gridUnit * 2.2
 panel.floating = false
@@ -31,12 +29,10 @@ appmenu.writeConfig('global', 'Meta')
 
 panel.addWidget('org.kde.plasma.icontasks')
 
-var spacer1 = panel.addWidget('org.kde.plasma.panelspacer')
-
+panel.addWidget('org.kde.plasma.panelspacer')
 panel.addWidget('org.kde.plasma.systemtray')
 panel.addWidget('org.kde.plasma.digitalclock')
-
-var showdesktop = panel.addWidget('org.kde.plasma.showdesktop')
+panel.addWidget('org.kde.plasma.showdesktop')
 
 panel.currentConfigGroup = ['General']
 panel.writeConfig('floating', false)
