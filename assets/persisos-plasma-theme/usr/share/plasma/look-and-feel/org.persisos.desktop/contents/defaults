@@ -7,6 +7,9 @@ LookAndFeelPackage=org.persisos.desktop
 [kdeglobals][Icons]
 Theme=breeze
 
+[Wallpaper]
+Image=PersisOS-1
+
 [ksplashrc][KSplash]
 Engine=KSplashQML
 Theme=org.persisos.desktop

@@ -6,7 +6,8 @@ set -eu
 # available to new sessions, while this one-shot helper applies the panel and
 # wallpaper layout to the live user's config.
 config_home=${XDG_CONFIG_HOME:-"$HOME/.config"}
-marker="$config_home/.persisos-theme-applied"
+marker="$config_home/.persisos-theme-applied-v2"
+layout=/usr/share/plasma/layout-templates/org.persisos.desktop.defaultlayout/contents/layout.js
 
 quiet=0
 force=0
@@ -27,15 +28,66 @@ log() {
 }
 
 log "Applying PersisOS global theme, panel, and wallpaper..."
-layout_applied=0
+
+# Apply the appearance separately. The layout is sent to plasmashell only
+# after its D-Bus interface is available, so a login race cannot leave the
+# session without its wallpaper and panel.
 if command -v plasma-apply-lookandfeel >/dev/null 2>&1; then
-    # Plasma 6 applies a look-and-feel package's layout only when explicitly
-    # asked to reset the layout.  This creates the panel and sets the wallpaper.
+    plasma-apply-lookandfeel -a org.persisos.desktop >/dev/null 2>&1 || true
+fi
+
+plasma_service_ready() {
+    if command -v qdbus6 >/dev/null 2>&1; then
+        qdbus6 org.kde.plasmashell /PlasmaShell >/dev/null 2>&1
+    elif command -v qdbus >/dev/null 2>&1; then
+        qdbus org.kde.plasmashell /PlasmaShell >/dev/null 2>&1
+    elif command -v gdbus >/dev/null 2>&1; then
+        gdbus introspect --session --dest org.kde.plasmashell \
+            --object-path /PlasmaShell >/dev/null 2>&1
+    else
+        return 1
+    fi
+}
+
+evaluate_layout() {
+    layout_code=$(cat "$layout")
+    if command -v qdbus6 >/dev/null 2>&1; then
+        qdbus6 org.kde.plasmashell /PlasmaShell \
+            org.kde.PlasmaShell.evaluateScript "$layout_code" >/dev/null
+    elif command -v qdbus >/dev/null 2>&1; then
+        qdbus org.kde.plasmashell /PlasmaShell \
+            org.kde.PlasmaShell.evaluateScript "$layout_code" >/dev/null
+    elif command -v gdbus >/dev/null 2>&1; then
+        gdbus call --session --dest org.kde.plasmashell \
+            --object-path /PlasmaShell \
+            --method org.kde.PlasmaShell.evaluateScript "$layout_code" >/dev/null
+    else
+        return 1
+    fi
+}
+
+layout_applied=0
+if [ -r "$layout" ] && \
+    { command -v qdbus6 >/dev/null 2>&1 || \
+      command -v qdbus >/dev/null 2>&1 || \
+      command -v gdbus >/dev/null 2>&1; }; then
+    attempts=0
+    while [ "$attempts" -lt 30 ]; do
+        if plasma_service_ready; then
+            if evaluate_layout; then
+                layout_applied=1
+            fi
+            break
+        fi
+        attempts=$((attempts + 1))
+        sleep 1
+    done
+elif command -v plasma-apply-lookandfeel >/dev/null 2>&1; then
+    # Minimal Plasma installations may not ship a command-line D-Bus client.
+    # Keep the native reset path as a compatibility fallback.
     if plasma-apply-lookandfeel -a org.persisos.desktop --resetLayout; then
         layout_applied=1
     fi
-else
-    log "Warning: plasma-apply-lookandfeel is unavailable; retrying on next session."
 fi
 
 # Keep the icon setting explicit even when a user's existing KDE config wins
@@ -48,5 +100,7 @@ fi
 
 if [ "$layout_applied" -eq 1 ]; then
     touch "$marker"
+else
+    log "Warning: Plasma was not ready; the layout will be retried next login."
 fi
 log "PersisOS theme applied."
