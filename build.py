@@ -167,6 +167,21 @@ def require_tool(name):
         raise BuildError(f"Required tool not found: {name}")
 
 
+def available_grub_modules(grub_dir: Path, requested):
+    """Return requested GRUB modules that are actually shipped by Debian."""
+    available = {p.stem for p in grub_dir.glob("*.mod")}
+    missing = [name for name in requested if name not in available]
+    # initrd is optional in some GRUB targets; the linux module can still
+    # load an initrd from the configured path at boot.
+    tolerated = {"initrd"}
+    unexpected = [name for name in missing if name not in tolerated]
+    if unexpected:
+        raise BuildError(
+            f"GRUB modules missing for {grub_dir.name}: {', '.join(unexpected)}"
+        )
+    return [name for name in requested if name in available]
+
+
 # ---------------------------------------------------------------------------
 # Config loader
 # ---------------------------------------------------------------------------
@@ -537,6 +552,7 @@ menuentry "{distro} {version} (live, debug)" {{
                     shutil.copy2(lst, bios_mod_dst / lst.name)
 
                 # Build standalone BIOS core image with early config baked in
+                modules = available_grub_modules(grub_bios_lib, GRUB_BIOS_MODULES)
                 with tempfile.NamedTemporaryFile(
                     mode="w", suffix=".cfg", delete=False
                 ) as ecfg:
@@ -562,7 +578,7 @@ menuentry "{distro} {version} (live, debug)" {{
                             "--directory",
                             str(grub_bios_lib),
                         ]
-                        + GRUB_BIOS_MODULES
+                        + modules
                     )
                 finally:
                     Path(early_cfg_path).unlink(missing_ok=True)
@@ -608,6 +624,7 @@ menuentry "{distro} {version} (live, debug)" {{
                 for lst in Path(grub_efi_lib).glob("*.lst"):
                     shutil.copy2(lst, efi_mod_dst / lst.name)
 
+                modules = available_grub_modules(grub_efi_lib, GRUB_EFI_MODULES)
                 with tempfile.NamedTemporaryFile(
                     mode="w", suffix=".cfg", delete=False
                 ) as ecfg:
@@ -630,7 +647,7 @@ menuentry "{distro} {version} (live, debug)" {{
                             "--directory",
                             str(grub_efi_lib),
                         ]
-                        + GRUB_EFI_MODULES
+                        + modules
                     )
                 finally:
                     Path(early_cfg_path).unlink(missing_ok=True)
