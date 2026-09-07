@@ -477,6 +477,10 @@ menuentry "{distro} {version} (live, debug)" {{
             p = Path(base) / grub_arch
             if p.is_dir():
                 return p
+        for base in (Path("/usr/lib"), Path("/usr/share")):
+            matches = list(base.glob(f"**/grub/{grub_arch}"))
+            if matches:
+                return matches[0]
         raise BuildError(f"GRUB module directory not found for arch '{grub_arch}'")
 
     def build_iso(self):
