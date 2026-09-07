@@ -27,9 +27,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Only needed for amd64 if you ever add cross-platform Docker builds there
       - name: Set up QEMU
-        if: matrix.arch == 'amd64'
+        if: matrix.arch == 'arm64'
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
