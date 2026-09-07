@@ -32,10 +32,13 @@ if command -v plasma-apply-lookandfeel >/dev/null 2>&1; then
 fi
 
 log "Applying PersisOS panel and wallpaper layout..."
+layout_applied=0
 if command -v plasma-apply-layouttemplate >/dev/null 2>&1; then
-    plasma-apply-layouttemplate org.persisos.desktop.defaultlayout
+    if plasma-apply-layouttemplate org.persisos.desktop.defaultlayout; then
+        layout_applied=1
+    fi
 else
-    log "Warning: plasma-apply-layouttemplate is unavailable; keeping Plasma defaults."
+    log "Warning: plasma-apply-layouttemplate is unavailable; retrying on next session."
 fi
 
 # Keep the icon setting explicit even when a user's existing KDE config wins
@@ -46,5 +49,7 @@ elif command -v kwriteconfig5 >/dev/null 2>&1; then
     kwriteconfig5 --file "$config_home/kdeglobals" --group Icons --key Theme breeze
 fi
 
-touch "$marker"
+if [ "$layout_applied" -eq 1 ]; then
+    touch "$marker"
+fi
 log "PersisOS theme applied."

@@ -5,13 +5,9 @@ var plasma = getApiVersion(1)
 var allDesktops = desktops()
 for (var i = 0; i < allDesktops.length; i++) {
   var d = allDesktops[i]
-  d.wallpaperPlugin = 'org.kde.slideshow'
-  d.currentConfigGroup = ['Wallpaper', 'org.kde.slideshow', 'General']
-  d.writeConfig(
-      'SlidePaths', '/usr/share/wallpapers/PersisOS-Slideshow/contents/images/')
-  d.writeConfig('SlideInterval', 600)
-  d.writeConfig('SlideshowMode', 'Sequential')
-  d.writeConfig('SlideshowBackend', 'Directory')
+  d.wallpaperPlugin = 'org.kde.image'
+  d.currentConfigGroup = ['Wallpaper', 'org.kde.image', 'General']
+  d.writeConfig('Image', '/usr/share/wallpapers/PersisOS-1/contents/images/2560x1600.png')
   d.writeConfig('FillMode', 2)
 }
 
