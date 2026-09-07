@@ -73,7 +73,7 @@ Rectangle {
                 width: 8
                 height: 8
                 radius: 4
-                color: "#e8a15a"
+                color: "#b25ae8"
                 opacity: 0.3
 
                 SequentialAnimation on opacity {
