@@ -50,13 +50,12 @@ LIVE_PACKAGES = [
 
 HOST_BUILD_TOOLS = [
     "debootstrap",
-    "squashfs-tools",
+    "mksquashfs",
     "xorriso",
     "mtools",
     "dosfstools",
-    "grub-common",
-    "grub-pc-bin",
-    "grub2-common",
+    "grub-mkimage",
+    "mkfs.vfat",
 ]
 
 # ---------------------------------------------------------------------------
