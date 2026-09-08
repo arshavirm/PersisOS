@@ -26,7 +26,7 @@
         "xserver-xorg",
         "kwin-x11",
         "kwin-wayland",
-        "plasma-workspace-wayland",
+        "plasma-workspace",
         "breeze",
         "breeze-icon-theme",
         "plasma-widgets-addons",
