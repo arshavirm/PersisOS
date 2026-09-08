@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Link
+Name=Trash
+Comment=View deleted files
+Icon=user-trash
+URL=trash:/

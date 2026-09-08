@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Home
+Comment=Open your personal folder
+Icon=computer
+Exec=dolphin
+Terminal=false
+StartupNotify=true
