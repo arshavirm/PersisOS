@@ -1,10 +1,11 @@
 [Desktop Entry]
 Type=Application
 Name=Install PersisOS
+GenericName=System Installer
 Comment=Install PersisOS on this computer
 Icon=persisos
 Exec=pkexec calamares
 Terminal=false
 StartupNotify=true
 Categories=Qt;System;
-
+Keywords=install;installer;system;

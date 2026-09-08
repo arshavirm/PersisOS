@@ -43,6 +43,7 @@ GRUB_EFI_BINARY = {
 
 LIVE_PACKAGES = [
     "live-boot",
+    "live-config",
     "systemd-sysv",
     "sudo",
     "locales",
@@ -195,6 +196,8 @@ DEFAULTS = {
     "live_username": None,
     "live_user_password": None,
     "root_password": None,
+    "apt_components": ["main", "contrib", "non-free", "non-free-firmware"],
+    "security_mirror": "http://deb.debian.org/debian-security",
     "pre_chroot_scripts": [],
     "post_install_scripts": [],
     "architecture": "amd64",
@@ -220,6 +223,13 @@ def load_config(path: str) -> dict:
             f"Unsupported architecture {cfg['architecture']!r}; "
             f"choose one of: {', '.join(sorted(KERNEL_PACKAGES))}"
         )
+    components = cfg["apt_components"]
+    if not isinstance(components, list) or not components or not all(
+        isinstance(component, str)
+        and re.fullmatch(r"[a-z0-9][a-z0-9-]*", component)
+        for component in components
+    ):
+        raise BuildError("apt_components must be a non-empty list of APT components")
 
     # Derive iso_volume_id from distro name if not set
     if "iso_volume_id" not in cfg:
@@ -273,16 +283,15 @@ class LiveBuilder:
 
     def run_debootstrap(self):
         with build_step("Running debootstrap"):
-            run(
-                [
-                    "debootstrap",
-                    "--arch",
-                    self.arch,
-                    self.cfg["debian_distro"],
-                    str(self.chroot),
-                    self.cfg["apt_mirror"],
-                ]
-            )
+            cmd = ["debootstrap", "--arch", self.arch]
+            if self.cfg.get("debootstrap_variant"):
+                cmd.append(f"--variant={self.cfg['debootstrap_variant']}")
+            cmd += [
+                self.cfg["debian_distro"],
+                str(self.chroot),
+                self.cfg["apt_mirror"],
+            ]
+            run(cmd)
 
     # ------------------------------------------------------------------
     # APT configuration
@@ -290,9 +299,15 @@ class LiveBuilder:
 
     def configure_apt(self):
         with build_step("Configuring APT"):
-            sources = (
-                f"deb {self.cfg['apt_mirror']} {self.cfg['debian_distro']} "
-                "main contrib non-free non-free-firmware\n"
+            suite = self.cfg["debian_distro"]
+            components = " ".join(self.cfg["apt_components"])
+            sources = "\n".join(
+                [
+                    f"deb {self.cfg['apt_mirror']} {suite} {components}",
+                    f"deb {self.cfg['apt_mirror']} {suite}-updates {components}",
+                    f"deb {self.cfg['security_mirror']} {suite}-security {components}",
+                    "",
+                ]
             )
             (self.chroot / "etc" / "apt" / "sources.list").write_text(sources)
             self._chroot(["apt-get", "update"])
@@ -340,10 +355,12 @@ class LiveBuilder:
 
     def install_packages(self):
         with build_step("Installing packages"):
-            pkgs = (
-                list(self.cfg["packages"])
-                + LIVE_PACKAGES
-                + [KERNEL_PACKAGES[self.arch]]
+            pkgs = list(
+                dict.fromkeys(
+                    list(self.cfg["packages"])
+                    + LIVE_PACKAGES
+                    + [KERNEL_PACKAGES[self.arch]]
+                )
             )
             if self.arch in GRUB_EFI_PACKAGES:
                 pkgs.append(GRUB_EFI_PACKAGES[self.arch])
@@ -446,6 +463,8 @@ class LiveBuilder:
             # Timezone
             tz = self.cfg["timezone"]
             tz_file = self.chroot / "usr" / "share" / "zoneinfo" / tz
+            if not tz_file.is_file():
+                raise BuildError(f"Unknown timezone: {tz}")
             localtime = self.chroot / "etc" / "localtime"
             if localtime.exists() or localtime.is_symlink():
                 localtime.unlink()
@@ -455,6 +474,13 @@ class LiveBuilder:
             # Hostname
             hostname = self.cfg.get("hostname") or self.cfg["distro_name"].lower()
             (self.chroot / "etc" / "hostname").write_text(hostname + "\n")
+            (self.chroot / "etc" / "hosts").write_text(
+                "127.0.0.1\tlocalhost\n"
+                f"127.0.1.1\t{hostname}\n"
+                "::1\tlocalhost ip6-localhost ip6-loopback\n"
+                "ff02::1\tip6-allnodes\n"
+                "ff02::2\tip6-allrouters\n"
+            )
 
     # ------------------------------------------------------------------
     # Chroot cleanup
@@ -466,9 +492,26 @@ class LiveBuilder:
             self._chroot(["apt-get", "clean"], extra_env=env)
             for p in (self.chroot / "var" / "cache" / "apt" / "archives").glob("*.deb"):
                 p.unlink(missing_ok=True)
+            apt_lists = self.chroot / "var" / "lib" / "apt" / "lists"
+            if apt_lists.is_dir():
+                for p in apt_lists.iterdir():
+                    if p.is_dir():
+                        shutil.rmtree(p)
+                    else:
+                        p.unlink(missing_ok=True)
+                (apt_lists / "partial").mkdir()
             for p in (self.chroot / "tmp").glob("*"):
                 if p.is_file():
                     p.unlink(missing_ok=True)
+
+            # Every live boot and installed system must receive its own ID.
+            # Calamares' machineid module creates the target system's value.
+            machine_id = self.chroot / "etc" / "machine-id"
+            machine_id.parent.mkdir(parents=True, exist_ok=True)
+            machine_id.write_text("")
+            (self.chroot / "var" / "lib" / "dbus" / "machine-id").unlink(
+                missing_ok=True
+            )
 
     # ------------------------------------------------------------------
     # Kernel / initrd export

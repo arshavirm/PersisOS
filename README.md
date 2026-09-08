@@ -7,6 +7,21 @@
 
 PersisOS is a polished KDE Plasma live desktop built on Debian 13. It ships with a focused set of everyday applications, a branded Plasma experience, and secure-by-default services.
 
+## Design goals
+
+- **Stable:** PersisOS 2.0 is pinned to Debian 13 (Trixie) and enables the
+  matching security and stable-updates repositories.
+- **User-friendly:** The live session provides a complete Plasma desktop,
+  modern web browsing, common file formats, screenshots, networking, audio,
+  Bluetooth, and a branded graphical installer.
+- **Lean:** Packages are installed without automatic recommendations. The
+  image includes a deliberately small application set instead of multiple
+  programs for the same task.
+
+Package additions should solve a common desktop need, hardware requirement,
+security issue, or accessibility problem. Optional specialist applications
+belong in the repositories rather than the base image.
+
 ## Build
 
 The builder must run as root (or inside the provided CI container) and requires debootstrap, xorriso, squashfs-tools, GRUB, and dosfstools.
