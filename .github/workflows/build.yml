@@ -3,8 +3,20 @@ name: Build PersisOS
 on:
   push:
     branches: ["main"]
+    paths:
+      - "PersisOS-2.0-*.json"
+      - "assets/**"
+      - "build.py"
+      - "tests/**"
+      - ".github/workflows/build.yml"
   pull_request:
     branches: ["main"]
+    paths:
+      - "PersisOS-2.0-*.json"
+      - "assets/**"
+      - "build.py"
+      - "tests/**"
+      - ".github/workflows/build.yml"
   workflow_dispatch:
 
 jobs:

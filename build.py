@@ -241,6 +241,15 @@ def load_config(path: str) -> dict:
             f"iso_volume_id must match [A-Za-z0-9_]{{1,32}}, got: {cfg['iso_volume_id']!r}"
         )
 
+    iso_filename = cfg.get("iso_filename")
+    if iso_filename is not None:
+        if (
+            not isinstance(iso_filename, str)
+            or Path(iso_filename).name != iso_filename
+            or not iso_filename.endswith(".iso")
+        ):
+            raise BuildError("iso_filename must be a plain filename ending in .iso")
+
     return cfg
 
 
@@ -795,7 +804,9 @@ menuentry "{distro} {version} (live, debug)" {{
             # ----------------------------------------------------------
             # Final xorriso invocation
             # ----------------------------------------------------------
-            iso_name = f"{distro}-{version}-{self.arch}.iso"
+            iso_name = self.cfg.get("iso_filename") or (
+                f"{distro}-{version}-{self.arch}.iso"
+            )
             iso_out = self.outdir / iso_name
             xorriso_args += ["-output", str(iso_out), str(self.iso_root)]
             run(xorriso_args)

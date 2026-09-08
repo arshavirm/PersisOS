@@ -12,6 +12,8 @@ CONFIG_PATHS = [
     ROOT / "PersisOS-2.0-amd64.json",
     ROOT / "PersisOS-2.0-arm64.json",
 ]
+SERVER_CONFIG_PATH = ROOT / "PersisOS-Server-2.0-amd64.json"
+ALL_CONFIG_PATHS = CONFIG_PATHS + [SERVER_CONFIG_PATH]
 
 
 class ProjectValidationTests(unittest.TestCase):
@@ -32,7 +34,7 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertEqual(manifests[0], manifests[1])
 
     def test_inline_build_scripts_have_valid_shell_syntax(self):
-        for path in CONFIG_PATHS:
+        for path in ALL_CONFIG_PATHS:
             manifest = json.loads(path.read_text())
             scripts = manifest["pre_chroot_scripts"] + manifest["post_install_scripts"]
             for index, script in enumerate(scripts):
@@ -86,6 +88,34 @@ class ProjectValidationTests(unittest.TestCase):
             manifest = json.loads(path.read_text())
             self.assertIn("calamares", manifest["packages"])
             self.assertIn("pkexec", manifest["packages"])
+
+    def test_server_manifest_is_headless_and_server_focused(self):
+        config = build.load_config(str(SERVER_CONFIG_PATH))
+        self.assertEqual(config["architecture"], "amd64")
+        self.assertEqual(config["iso_filename"], "PersisOS-Server-2.0-amd64.iso")
+        self.assertEqual(len(config["packages"]), len(set(config["packages"])))
+
+        required = {
+            "openssh-server",
+            "nftables",
+            "fail2ban",
+            "podman",
+            "smartmontools",
+            "qemu-guest-agent",
+        }
+        self.assertTrue(required.issubset(config["packages"]))
+
+        graphical = {
+            "kde-plasma-desktop",
+            "xserver-xorg",
+            "sddm",
+            "calamares",
+            "firefox-esr",
+        }
+        self.assertTrue(graphical.isdisjoint(config["packages"]))
+
+        scripts = "\n".join(config["post_install_scripts"])
+        self.assertIn("systemctl disable ssh", scripts)
 
 
 if __name__ == "__main__":

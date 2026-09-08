@@ -5,7 +5,11 @@
 ![Debian](https://img.shields.io/badge/base-Debian%2013-A81D33?logo=debian&logoColor=white)
 ![Architectures](https://img.shields.io/badge/architectures-amd64%20%7C%20arm64-4B6CB7)
 
-PersisOS is a polished KDE Plasma live desktop built on Debian 13. It ships with a focused set of everyday applications, a branded Plasma experience, and secure-by-default services.
+PersisOS is a Debian 13-based operating system available as a polished KDE
+Plasma desktop and a headless server edition. The desktop ships with a focused
+set of everyday applications and a branded Plasma experience. The server image
+provides administration, diagnostics, storage, networking, security, container,
+and virtualization tools without a graphical stack.
 
 ## Design goals
 
@@ -32,9 +36,21 @@ sudo python3 build.py PersisOS-2.0-amd64.json --workdir build --outdir output
 
 Use the arm64 configuration for ARM images. Generated files are written to `output/`; temporary build state is kept in `build/` and ignored by Git.
 
+The amd64 server image uses its own manifest and CI workflow:
+
+```bash
+sudo python3 build.py PersisOS-Server-2.0-amd64.json \
+  --workdir build-server --outdir output-server
+```
+
+The server live account is `admin` with password `persisos`. SSH is installed
+but intentionally disabled on live media until the administrator changes that
+password and enables the service.
+
 ## Project layout
 
 - `build.py` — reproducible live ISO builder
-- `PersisOS-2.0-*.json` — architecture-specific image definitions
+- `PersisOS-2.0-*.json` — desktop image definitions
+- `PersisOS-Server-2.0-amd64.json` — headless amd64 server image definition
 - `assets/` — Plasma, SDDM, icon, and wallpaper branding
 - `.github/workflows/` — pull request, branch, and release builds
