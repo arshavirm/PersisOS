@@ -78,8 +78,14 @@ class ProjectValidationTests(unittest.TestCase):
 
         installer = configparser.ConfigParser(interpolation=None)
         installer.read(desktop_files[2])
+        self.assertEqual(installer["Desktop Entry"]["TryExec"], "calamares")
         self.assertEqual(installer["Desktop Entry"]["Exec"], "pkexec calamares")
         self.assertNotEqual(desktop_files[2].parent, desktop_files[0].parent)
+
+        for path in CONFIG_PATHS:
+            manifest = json.loads(path.read_text())
+            self.assertIn("calamares", manifest["packages"])
+            self.assertIn("pkexec", manifest["packages"])
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ Name=Install PersisOS
 GenericName=System Installer
 Comment=Install PersisOS on this computer
 Icon=persisos
+TryExec=calamares
 Exec=pkexec calamares
 Terminal=false
 StartupNotify=true

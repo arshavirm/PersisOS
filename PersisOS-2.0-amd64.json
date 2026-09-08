@@ -54,6 +54,7 @@
         "fonts-noto-color-emoji",
         "network-manager",
         "calamares",
+        "pkexec",
         "cryptsetup",
         "cryptsetup-initramfs",
         "apparmor",
@@ -80,7 +81,7 @@
         "#!/bin/bash\nset -e\necho 'Installing Background Script'\ninstall -m 0755 /.temp_assets/persisos-plasma-theme/usr/bin/persisos-apply-theme /usr/bin/persisos-apply-theme\n",
         "#!/bin/bash\nset -e\necho 'Installing PersisOS Calamares configuration'\ninstall -Dm 0644 /.temp_assets/calamares/settings.conf /etc/calamares/settings.conf\ncp -a /.temp_assets/calamares/branding /usr/share/calamares/\n",
         "#!/bin/bash\nset -e\necho 'Applying desktop, xdg and SDDM config'\ncp -a /.temp_assets/persisos-plasma-theme/etc/xdg/. /etc/xdg/\nmkdir -p /etc/sddm.conf.d /etc/skel/Desktop\ncp -a /.temp_assets/persisos-plasma-theme/etc/sddm.conf.d/. /etc/sddm.conf.d/\ncp -a /.temp_assets/persisos-plasma-theme/etc/skel/Desktop/. /etc/skel/Desktop/\nchmod 0755 /etc/skel/Desktop/*.desktop\nlive_home=$(getent passwd user | cut -d: -f6)\nif [ -n \"$live_home\" ]; then\n    install -d -m 0755 -o user -g user \"$live_home/Desktop\"\n    cp -a /etc/skel/Desktop/. \"$live_home/Desktop/\"\n    install -m 0755 -o user -g user /.temp_assets/persisos-plasma-theme/usr/share/applications/install-persisos.desktop \"$live_home/Desktop/Install PersisOS.desktop\"\n    chown -R user:user \"$live_home/Desktop\"\nfi\n",
-        "#!/bin/bash\nset -eu\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/icons /usr/share/\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/sddm /usr/share/\n",
+        "#!/bin/bash\nset -eu\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/icons /usr/share/\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/sddm /usr/share/\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/applications /usr/share/\n",
         "#!/bin/bash\nset -eu\n# Override Debian display identity while keeping its upstream release metadata.\ncp /usr/lib/os-release /tmp/persisos-os-release\nsed -i '/^\\(NAME\\|PRETTY_NAME\\|ID\\|ID_LIKE\\|VERSION\\|VERSION_ID\\|LOGO\\)=/d' /tmp/persisos-os-release\ncat >> /tmp/persisos-os-release <<'EOF'\nNAME=\"PersisOS\"\nPRETTY_NAME=\"PersisOS 2.0\"\nID=persisos\nID_LIKE=debian\nVERSION=\"2.0\"\nVERSION_ID=\"2.0\"\nLOGO=persisos\nEOF\ninstall -m 0644 /tmp/persisos-os-release /usr/lib/os-release\nln -sfn ../usr/lib/os-release /etc/os-release\nrm /tmp/persisos-os-release\nprintf '%s\\n' 'PersisOS 2.0 \\n \\l' > /etc/issue\nprintf 'PersisOS 2.0\\n' > /etc/issue.net\nmkdir -p /etc/default/grub.d\nprintf 'GRUB_DISTRIBUTOR=\"PersisOS 2.0\"\\n' > /etc/default/grub.d/50-persisos.cfg\n",
         "#!/bin/bash\nset -e\necho 'Removing Temp directory'\nrm -rf /.temp_assets\n"
     ],
