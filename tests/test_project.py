@@ -6,7 +6,6 @@ from pathlib import Path
 
 import build
 
-
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATHS = [
     ROOT / "PersisOS-2.0-amd64.json",
@@ -46,7 +45,7 @@ class ProjectValidationTests(unittest.TestCase):
         required_desktop_packages = {
             "kwin-x11",
             "kwin-wayland",
-            "plasma-workspace-wayland",
+            "plasma-workspace",
             "power-profiles-daemon",
             "udisks2",
             "fwupd",
@@ -76,10 +75,8 @@ class ProjectValidationTests(unittest.TestCase):
 
     def test_desktop_shortcuts_are_valid_and_executable(self):
         desktop_files = [
-            ROOT
-            / "assets/persisos-plasma-theme/etc/skel/Desktop/Home.desktop",
-            ROOT
-            / "assets/persisos-plasma-theme/etc/skel/Desktop/Trash.desktop",
+            ROOT / "assets/persisos-plasma-theme/etc/skel/Desktop/Home.desktop",
+            ROOT / "assets/persisos-plasma-theme/etc/skel/Desktop/Trash.desktop",
             ROOT
             / "assets/persisos-plasma-theme/usr/share/applications/install-persisos.desktop",
         ]
