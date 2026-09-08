@@ -42,6 +42,7 @@
         "pulseaudio-utils",
         "pulseaudio",
         "aha",
+        "vlc",
         "pciutils",
         "libspa-0.2-bluetooth",
         "wireplumber",
