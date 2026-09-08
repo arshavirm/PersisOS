@@ -24,7 +24,9 @@ var appmenu = panel.addWidget('org.kde.plasma.kickoff')
 appmenu.currentConfigGroup = ['General']
 appmenu.writeConfig('icon', 'persisos-launcher')
 
-panel.addWidget('org.kde.plasma.icontasks')
+var icontasks = panel.addWidget('org.kde.plasma.icontasks')
+icontasks.currentConfigGroup = ['General']
+icontasks.writeConfig('launchers', [])
 panel.addWidget('org.kde.plasma.panelspacer')
 panel.addWidget('org.kde.plasma.systemtray')
 panel.addWidget('org.kde.plasma.digitalclock')
