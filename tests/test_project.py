@@ -28,10 +28,33 @@ class ProjectValidationTests(unittest.TestCase):
         self.assertEqual(
             {manifest["architecture"] for manifest in manifests}, {"amd64", "arm64"}
         )
+        self.assertEqual(
+            {manifest["iso_volume_id"] for manifest in manifests},
+            {"PERSISOS_2_0_AMD64", "PERSISOS_2_0_ARM64"},
+        )
+        self.assertEqual(
+            {manifest["iso_filename"] for manifest in manifests},
+            {"PersisOS-2.0-amd64.iso", "PersisOS-2.0-arm64.iso"},
+        )
         for manifest in manifests:
             manifest.pop("arch", None)
             manifest.pop("architecture", None)
+            manifest.pop("iso_volume_id", None)
+            manifest.pop("iso_filename", None)
         self.assertEqual(manifests[0], manifests[1])
+
+        required_desktop_packages = {
+            "kwin-x11",
+            "kwin-wayland",
+            "plasma-workspace-wayland",
+            "power-profiles-daemon",
+            "udisks2",
+            "fwupd",
+            "plasma-disks",
+        }
+        for path in CONFIG_PATHS:
+            manifest = json.loads(path.read_text())
+            self.assertTrue(required_desktop_packages.issubset(manifest["packages"]))
 
     def test_inline_build_scripts_have_valid_shell_syntax(self):
         for path in ALL_CONFIG_PATHS:

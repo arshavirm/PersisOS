@@ -6,6 +6,12 @@
     "debootstrap_variant": null,
     "apt_mirror": "http://deb.debian.org/debian",
     "security_mirror": "http://deb.debian.org/debian-security",
+    "apt_components": [
+        "main",
+        "contrib",
+        "non-free",
+        "non-free-firmware"
+    ],
     "hostname": "persisos",
     "locale": "en_US.UTF-8",
     "timezone": "UTC",
@@ -19,10 +25,13 @@
         "kde-plasma-desktop",
         "xserver-xorg",
         "kwin-x11",
+        "kwin-wayland",
+        "plasma-workspace-wayland",
         "breeze",
         "breeze-icon-theme",
         "plasma-widgets-addons",
         "plasma-systemmonitor",
+        "plasma-disks",
         "systemsettings",
         "kinfocenter",
         "polkit-kde-agent-1",
@@ -53,6 +62,10 @@
         "fonts-noto-core",
         "fonts-noto-color-emoji",
         "network-manager",
+        "power-profiles-daemon",
+        "upower",
+        "udisks2",
+        "fwupd",
         "calamares",
         "pkexec",
         "cryptsetup",
@@ -73,8 +86,8 @@
         "#!/bin/bash\nset -e\nmkdir -p \"$ROOTFS/.temp_assets\"\ncp -r ./assets/persisos-plasma-theme \"$ROOTFS/.temp_assets/\"\ncp -r ./assets/calamares \"$ROOTFS/.temp_assets/\"\ninstall -Dm 0644 ./persisos.svg \"$ROOTFS/.temp_assets/persisos-plasma-theme/usr/share/icons/hicolor/scalable/apps/persisos.svg\"\n"
     ],
     "post_install_scripts": [
-        "#!/bin/bash\nset -e\necho 'Enabling core hardware services'\nsystemctl enable NetworkManager || true\nsystemctl enable bluetooth || true\n",
-        "#!/bin/bash\nset -e\necho 'Enabling AppArmor and automatic security updates'\nsystemctl enable apparmor || true\ncat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'\nAPT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Unattended-Upgrade \"1\";\nEOF\nsystemctl enable unattended-upgrades || true\n",
+        "#!/bin/bash\nset -e\necho 'Enabling core desktop and hardware services'\nsystemctl enable sddm || true\nsystemctl enable NetworkManager || true\nsystemctl enable bluetooth || true\nsystemctl enable power-profiles-daemon || true\nsystemctl enable fstrim.timer || true\nsystemctl enable fwupd-refresh.timer || true\n",
+        "#!/bin/bash\nset -e\necho 'Enabling AppArmor and automatic security updates'\nsystemctl enable apparmor || true\ncat > /etc/apt/apt.conf.d/20auto-upgrades << 'EOF'\nAPT::Periodic::Update-Package-Lists \"1\";\nAPT::Periodic::Unattended-Upgrade \"1\";\nAPT::Periodic::AutocleanInterval \"7\";\nEOF\nsystemctl enable unattended-upgrades || true\n",
         "#!/bin/bash\nset -e\necho 'Installing default-deny nftables firewall ruleset'\ncat > /etc/nftables.conf << 'EOF'\n#!/usr/sbin/nft -f\nflush ruleset\n\ntable inet filter {\n    chain input {\n        type filter hook input priority 0; policy drop;\n        iif \"lo\" accept\n        ct state established,related accept\n        ct state invalid drop\n        udp sport 67 udp dport 68 accept\n        udp sport 547 udp dport 546 accept\n        ip protocol icmp accept\n        ip6 nexthdr icmpv6 accept\n    }\n    chain forward {\n        type filter hook forward priority 0; policy drop;\n    }\n    chain output {\n        type filter hook output priority 0; policy accept;\n    }\n}\nEOF\nsystemctl enable nftables || true\n",
         "#!/bin/bash\nset -e\necho 'Applying kernel/network hardening sysctls'\ncat > /etc/sysctl.d/99-persisos-hardening.conf << 'EOF'\nkernel.kptr_restrict=2\nkernel.dmesg_restrict=1\nkernel.yama.ptrace_scope=1\nnet.ipv4.conf.all.rp_filter=1\nnet.ipv4.conf.default.rp_filter=1\nnet.ipv4.icmp_echo_ignore_broadcasts=1\nnet.ipv4.conf.all.accept_redirects=0\nnet.ipv6.conf.all.accept_redirects=0\nnet.ipv4.conf.all.send_redirects=0\nfs.protected_hardlinks=1\nfs.protected_symlinks=1\nEOF\n",
         "#!/bin/bash\nset -e\necho 'Installing Plasma Theme and Wallpapers'\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/plasma/. /usr/share/plasma/\nmkdir -p /usr/share/wallpapers\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/wallpapers/. /usr/share/wallpapers/\n",
@@ -82,10 +95,11 @@
         "#!/bin/bash\nset -e\necho 'Installing PersisOS Calamares configuration'\ninstall -Dm 0644 /.temp_assets/calamares/settings.conf /etc/calamares/settings.conf\ncp -a /.temp_assets/calamares/branding /usr/share/calamares/\n",
         "#!/bin/bash\nset -e\necho 'Applying desktop, xdg and SDDM config'\ncp -a /.temp_assets/persisos-plasma-theme/etc/xdg/. /etc/xdg/\nmkdir -p /etc/sddm.conf.d /etc/skel/Desktop\ncp -a /.temp_assets/persisos-plasma-theme/etc/sddm.conf.d/. /etc/sddm.conf.d/\ncp -a /.temp_assets/persisos-plasma-theme/etc/skel/Desktop/. /etc/skel/Desktop/\nchmod 0755 /etc/skel/Desktop/*.desktop\nlive_home=$(getent passwd user | cut -d: -f6)\nif [ -n \"$live_home\" ]; then\n    install -d -m 0755 -o user -g user \"$live_home/Desktop\"\n    cp -a /etc/skel/Desktop/. \"$live_home/Desktop/\"\n    install -m 0755 -o user -g user /.temp_assets/persisos-plasma-theme/usr/share/applications/install-persisos.desktop \"$live_home/Desktop/Install PersisOS.desktop\"\n    chown -R user:user \"$live_home/Desktop\"\nfi\n",
         "#!/bin/bash\nset -eu\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/icons /usr/share/\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/sddm /usr/share/\ncp -a /.temp_assets/persisos-plasma-theme/usr/share/applications /usr/share/\n",
-        "#!/bin/bash\nset -eu\n# Override Debian display identity while keeping its upstream release metadata.\ncp /usr/lib/os-release /tmp/persisos-os-release\nsed -i '/^\\(NAME\\|PRETTY_NAME\\|ID\\|ID_LIKE\\|VERSION\\|VERSION_ID\\|LOGO\\)=/d' /tmp/persisos-os-release\ncat >> /tmp/persisos-os-release <<'EOF'\nNAME=\"PersisOS\"\nPRETTY_NAME=\"PersisOS 2.0\"\nID=persisos\nID_LIKE=debian\nVERSION=\"2.0\"\nVERSION_ID=\"2.0\"\nLOGO=persisos\nEOF\ninstall -m 0644 /tmp/persisos-os-release /usr/lib/os-release\nln -sfn ../usr/lib/os-release /etc/os-release\nrm /tmp/persisos-os-release\nprintf '%s\\n' 'PersisOS 2.0 \\n \\l' > /etc/issue\nprintf 'PersisOS 2.0\\n' > /etc/issue.net\nmkdir -p /etc/default/grub.d\nprintf 'GRUB_DISTRIBUTOR=\"PersisOS 2.0\"\\n' > /etc/default/grub.d/50-persisos.cfg\n",
+        "#!/bin/bash\nset -eu\n# Override Debian display identity while keeping its upstream release metadata.\ncp /usr/lib/os-release /tmp/persisos-os-release\nsed -i '/^\\(NAME\\|PRETTY_NAME\\|ID\\|ID_LIKE\\|VERSION\\|VERSION_ID\\|VARIANT\\|VARIANT_ID\\|LOGO\\|HOME_URL\\|SUPPORT_URL\\|BUG_REPORT_URL\\)=/d' /tmp/persisos-os-release\ncat >> /tmp/persisos-os-release <<'EOF'\nNAME=\"PersisOS\"\nPRETTY_NAME=\"PersisOS 2.0\"\nID=persisos\nID_LIKE=debian\nVERSION=\"2.0\"\nVERSION_ID=\"2.0\"\nVARIANT=\"Desktop\"\nVARIANT_ID=desktop\nLOGO=persisos\nHOME_URL=\"https://github.com/arshavirm/PersisOS\"\nSUPPORT_URL=\"https://github.com/arshavirm/PersisOS/issues\"\nBUG_REPORT_URL=\"https://github.com/arshavirm/PersisOS/issues\"\nEOF\ninstall -m 0644 /tmp/persisos-os-release /usr/lib/os-release\nln -sfn ../usr/lib/os-release /etc/os-release\nrm /tmp/persisos-os-release\nprintf '%s\\n' 'PersisOS 2.0 \\n \\l' > /etc/issue\nprintf 'PersisOS 2.0\\n' > /etc/issue.net\nmkdir -p /etc/default/grub.d\nprintf 'GRUB_DISTRIBUTOR=\"PersisOS 2.0\"\\n' > /etc/default/grub.d/50-persisos.cfg\n",
         "#!/bin/bash\nset -e\necho 'Removing Temp directory'\nrm -rf /.temp_assets\n"
     ],
     "boot_append": "quiet splash",
     "squashfs_compression": "xz",
-    "iso_filename": null
+    "iso_volume_id": "PERSISOS_2_0_ARM64",
+    "iso_filename": "PersisOS-2.0-arm64.iso"
 }

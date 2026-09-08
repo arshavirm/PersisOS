@@ -2,6 +2,7 @@
 # PersisOS
 
 [![Build](https://github.com/arshavirm/PersisOS/actions/workflows/build.yml/badge.svg)](https://github.com/arshavirm/PersisOS/actions/workflows/build.yml)
+[![Build PersisOS Server](https://github.com/arshavirm/PersisOS/actions/workflows/server-build.yml/badge.svg)](https://github.com/arshavirm/PersisOS/actions/workflows/server-build.yml)
 ![Debian](https://img.shields.io/badge/base-Debian%2013-A81D33?logo=debian&logoColor=white)
 ![Architectures](https://img.shields.io/badge/architectures-amd64%20%7C%20arm64-4B6CB7)
 
@@ -16,8 +17,9 @@ and virtualization tools without a graphical stack.
 - **Stable:** PersisOS 2.0 is pinned to Debian 13 (Trixie) and enables the
   matching security and stable-updates repositories.
 - **User-friendly:** The live session provides a complete Plasma desktop,
-  modern web browsing, common file formats, screenshots, networking, audio,
-  Bluetooth, and a branded graphical installer.
+  both Wayland and X11 sessions, modern web browsing, common file formats,
+  screenshots, networking, audio, Bluetooth, power and firmware management,
+  disk-health monitoring, and a branded graphical installer.
 - **Lean:** Packages are installed without automatic recommendations. The
   image includes a deliberately small application set instead of multiple
   programs for the same task.
