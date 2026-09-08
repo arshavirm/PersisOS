@@ -81,7 +81,7 @@
         "#!/bin/bash\nset -e\necho 'Configuring persistent system logs'\nmkdir -p /var/log/journal /etc/systemd/journald.conf.d\ncat > /etc/systemd/journald.conf.d/99-persisos-server.conf << 'EOF'\n[Journal]\nStorage=persistent\nCompress=yes\nSystemMaxUse=512M\nEOF\n",
         "#!/bin/bash\nset -eu\n# Override Debian display identity while keeping its upstream release metadata.\ncp /usr/lib/os-release /tmp/persisos-server-os-release\nsed -i '/^\\(NAME\\|PRETTY_NAME\\|ID\\|ID_LIKE\\|VERSION\\|VERSION_ID\\|VARIANT\\|VARIANT_ID\\)=/d' /tmp/persisos-server-os-release\ncat >> /tmp/persisos-server-os-release <<'EOF'\nNAME=\"PersisOS Server\"\nPRETTY_NAME=\"PersisOS Server 2.0\"\nID=persisos\nID_LIKE=debian\nVERSION=\"2.0\"\nVERSION_ID=\"2.0\"\nVARIANT=\"Server\"\nVARIANT_ID=server\nEOF\ninstall -m 0644 /tmp/persisos-server-os-release /usr/lib/os-release\nln -sfn ../usr/lib/os-release /etc/os-release\nrm /tmp/persisos-server-os-release\nprintf '%s\\n' 'PersisOS Server 2.0 \\n \\l' > /etc/issue\nprintf 'PersisOS Server 2.0\\n' > /etc/issue.net\nmkdir -p /etc/default/grub.d\nprintf 'GRUB_DISTRIBUTOR=\"PersisOS Server 2.0\"\\n' > /etc/default/grub.d/50-persisos-server.cfg\ncat > /etc/motd << 'EOF'\nWelcome to PersisOS Server 2.0\n\nLive account: admin\nSSH is installed but disabled on live media. After changing the password, run:\n  sudo passwd admin\n  sudo systemctl enable --now ssh\n\nUse nmcli for network configuration and nft for firewall management.\nEOF\n"
     ],
-    "boot_append": "quiet",
+    "boot_append": "quiet noautologin",
     "squashfs_compression": "xz",
     "iso_volume_id": "PERSISOS_SERVER_2_0",
     "iso_filename": "PersisOS-Server-2.0-amd64.iso"
