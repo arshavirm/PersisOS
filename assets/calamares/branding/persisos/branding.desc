@@ -1,24 +1,34 @@
 ---
 componentName: persisos
+
 welcomeStyle: sidebar
 sidebarBackground: "#171b2d"
 sidebarText: "#ffffff"
 sidebarTextSecondary: "#b9c3e6"
 windowIcon: /usr/share/icons/hicolor/scalable/apps/persisos.svg
+
 productName: PersisOS
 shortProductName: PersisOS
-version: 2.0
-shortVersion: 2.0
+version: "2.0"
+shortVersion: "2.0"
 productUrl: ""
 supportUrl: ""
 knownIssuesUrl: ""
 productLogo: /usr/share/icons/hicolor/scalable/apps/persisos.svg
 productIcon: /usr/share/icons/hicolor/scalable/apps/persisos.svg
 sidebarImage: /usr/share/wallpapers/PersisOS-3/contents/images/2560x1600.png
+
 slideshow: "show.qml"
 slideshowAPI: 2
+
 showSupportUrl: false
 showKnownIssuesUrl: false
+
 strings:
-  welcome: Welcome to PersisOS
-  finished: PersisOS is ready to use
+    welcome: Welcome to PersisOS
+    finished: PersisOS is ready to use
+
+images:
+    productLogo: "/usr/share/wallpapers/PersisOS-3/contents/images/2560x1600.png"
+    productIcon: "/usr/share/icons/hicolor/scalable/apps/persisos.svg"
+    productWelcome: "/usr/share/wallpapers/PersisOS-3/contents/images/2560x1600.png"
