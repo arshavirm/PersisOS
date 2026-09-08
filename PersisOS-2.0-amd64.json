@@ -23,6 +23,8 @@
         "breeze-icon-theme",
         "plasma-widgets-addons",
         "plasma-systemmonitor",
+        "systemsettings",
+        "kinfocenter",
         "polkit-kde-agent-1",
         "plasma-nm",
         "plasma-pa",
