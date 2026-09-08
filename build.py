@@ -192,6 +192,9 @@ DEFAULTS = {
     "timezone": "UTC",
     "squashfs_compression": "xz",
     "splash": "",
+    "live_username": None,
+    "live_user_password": None,
+    "root_password": None,
     "pre_chroot_scripts": [],
     "post_install_scripts": [],
     "architecture": "amd64",
@@ -352,6 +355,75 @@ class LiveBuilder:
                 ["apt-get", "install", "-y", "--no-install-recommends"] + pkgs,
                 extra_env=env,
             )
+
+    # ------------------------------------------------------------------
+    # User accounts
+    # ------------------------------------------------------------------
+
+    def configure_users(self):
+        username = self.cfg.get("live_username")
+        if not username:
+            return
+
+        with build_step(f"Creating live user: {username}"):
+            if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", username):
+                raise BuildError(
+                    "live_username must start with a lowercase letter or underscore "
+                    "and contain only lowercase letters, digits, underscores, or hyphens"
+                )
+
+            passwd_file = self.chroot / "etc" / "passwd"
+            existing_users = {
+                line.split(":", 1)[0]
+                for line in passwd_file.read_text().splitlines()
+                if ":" in line
+            }
+            if username in existing_users:
+                raise BuildError(f"Live user already exists: {username}")
+
+            self._chroot(
+                [
+                    "useradd",
+                    "--create-home",
+                    "--user-group",
+                    "--shell",
+                    "/bin/bash",
+                    username,
+                ]
+            )
+
+            desktop_groups = [
+                "sudo",
+                "audio",
+                "video",
+                "plugdev",
+                "netdev",
+                "bluetooth",
+            ]
+            for group in desktop_groups:
+                self._chroot(["groupadd", "--force", group])
+            self._chroot(
+                ["usermod", "--append", "--groups", ",".join(desktop_groups), username]
+            )
+
+            self._set_password(username, self.cfg.get("live_user_password"))
+
+            root_password = self.cfg.get("root_password")
+            if root_password is not None:
+                self._set_password("root", root_password)
+
+    def _set_password(self, username, password):
+        """Set an account password without exposing it in the process list."""
+        if password is None:
+            self._chroot(["passwd", "--lock", username])
+            return
+        password = str(password)
+        if "\n" in password or "\r" in password:
+            raise BuildError(f"Password for {username} must not contain a newline")
+        if password == "":
+            self._chroot(["passwd", "--delete", username])
+            return
+        self._chroot(["chpasswd"], input=f"{username}:{password}\n")
 
     # ------------------------------------------------------------------
     # System configuration
@@ -690,9 +762,9 @@ menuentry "{distro} {version} (live, debug)" {{
     # Helpers
     # ------------------------------------------------------------------
 
-    def _chroot(self, cmd, extra_env=None):
+    def _chroot(self, cmd, extra_env=None, **kwargs):
         env = extra_env or os.environ.copy()
-        run(["chroot", str(self.chroot)] + cmd, env=env)
+        run(["chroot", str(self.chroot)] + cmd, env=env, **kwargs)
 
     # ------------------------------------------------------------------
     # Main pipeline
@@ -705,6 +777,7 @@ menuentry "{distro} {version} (live, debug)" {{
             self.configure_apt()
             self.pre_chroot_scripts()
             self.install_packages()
+            self.configure_users()
             self.configure_system()
             self.post_install_scripts()
             self.cleanup_chroot()
