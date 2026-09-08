@@ -65,3 +65,42 @@ jobs:
           tag_name: ${{ github.event.release.tag_name }}
           files: |
             output/*.iso
+
+  build-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate configuration
+        run: |
+          python3 -m py_compile build.py
+          python3 -m unittest discover -s tests -v
+
+      - name: Build server ISO (amd64)
+        run: |
+          docker run --rm --privileged \
+            --platform linux/amd64 \
+            -v ${{ github.workspace }}:/work \
+            -w /work \
+            debian:trixie \
+            bash -c "
+              set -euo pipefail &&
+              export DEBIAN_FRONTEND=noninteractive &&
+              apt-get update -qq &&
+              apt-get install -y --no-install-recommends \
+                debootstrap squashfs-tools grub2-common \
+                grub-pc-bin grub-efi-amd64-bin \
+                xorriso mtools dosfstools python3 &&
+              python3 build.py PersisOS-Server-2.0-amd64.json \
+                --workdir build-server --outdir output-server
+            "
+
+      - name: Upload server ISO to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: |
+            output-server/*.iso
