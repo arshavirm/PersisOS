@@ -52,9 +52,9 @@ Rectangle {
         anchors.top: logo.bottom
         anchors.topMargin: 24
         anchors.horizontalCenter: logo.horizontalCenter
-        text: "PersisOS 2.0"
+        text: "welcome"
         color: "#ffffff"
-        font.pointSize: 16
+        font.pointSize: 20
         font.letterSpacing: 2
         opacity: 0.9
     }

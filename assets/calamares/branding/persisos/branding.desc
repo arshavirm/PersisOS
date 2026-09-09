@@ -28,13 +28,12 @@ images:
     productLogo:      "/usr/share/icons/hicolor/scalable/apps/persisos.svg"
     productIcon:      "/usr/share/icons/hicolor/scalable/apps/persisos.svg"
     productWelcome:   "/usr/share/icons/hicolor/scalable/apps/persisos.svg"
-    productWallpaper: "/usr/share/wallpapers/PersisOS-3/contents/images/2560x1600.png"
 
 slideshow:    "show.qml"
 slideshowAPI: 2
 
 style:
-    sidebarBackground:    "#171b2d"
+    sidebarBackground:    "#f4f4f4"
     sidebarText:          "#ffffff"
     sidebarTextSelect:    "#8f44a0"
     sidebarTextHighlight: "#e4b9e6"
