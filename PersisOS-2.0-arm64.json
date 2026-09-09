@@ -74,6 +74,7 @@
         "power-profiles-daemon",
         "upower",
         "udisks2",
+        "squashfs-tools",
         "fwupd",
         "calamares",
         "pkexec",
