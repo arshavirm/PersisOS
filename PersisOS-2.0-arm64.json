@@ -3,7 +3,7 @@
     "version": "2.0",
     "arch": "arm64",
     "debian_distro": "trixie",
-    "debootstrap_variant": null,
+    "debootstrap_variant": "minbase",
     "apt_mirror": "http://deb.debian.org/debian",
     "security_mirror": "http://deb.debian.org/debian-security",
     "apt_components": [
