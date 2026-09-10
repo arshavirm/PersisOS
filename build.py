@@ -224,10 +224,14 @@ def load_config(path: str) -> dict:
             f"choose one of: {', '.join(sorted(KERNEL_PACKAGES))}"
         )
     components = cfg["apt_components"]
-    if not isinstance(components, list) or not components or not all(
-        isinstance(component, str)
-        and re.fullmatch(r"[a-z0-9][a-z0-9-]*", component)
-        for component in components
+    if (
+        not isinstance(components, list)
+        or not components
+        or not all(
+            isinstance(component, str)
+            and re.fullmatch(r"[a-z0-9][a-z0-9-]*", component)
+            for component in components
+        )
     ):
         raise BuildError("apt_components must be a non-empty list of APT components")
 
@@ -270,6 +274,7 @@ class LiveBuilder:
 
         self.chroot = self.workdir / "chroot"
         self.iso_root = self.workdir / "iso"
+        self._pseudo_mounted = False
 
     # ------------------------------------------------------------------
     # Directory setup
@@ -301,6 +306,36 @@ class LiveBuilder:
                 self.cfg["apt_mirror"],
             ]
             run(cmd)
+
+    def _mount_pseudo_filesystems(self):
+        with build_step("Mounting /proc, /sys, /dev into chroot"):
+            self._pseudo_mounted = True
+            (self.chroot / "dev" / "pts").mkdir(parents=True, exist_ok=True)
+            run(["mount", "-t", "proc", "proc", str(self.chroot / "proc")])
+            run(["mount", "-t", "sysfs", "sys", str(self.chroot / "sys")])
+            run(["mount", "--bind", "/dev", str(self.chroot / "dev")])
+            run(["mount", "--bind", "/dev/pts", str(self.chroot / "dev" / "pts")])
+
+    def _unmount_pseudo_filesystems(self):
+        if not self._pseudo_mounted:
+            return
+        with build_step("Unmounting /proc, /sys, /dev from chroot"):
+            # Reverse order, most-nested first.
+            for sub in ("dev/pts", "dev", "sys", "proc"):
+                path = self.chroot / sub
+                if not path.is_dir():
+                    continue
+                result = subprocess.run(
+                    ["umount", str(path)], capture_output=True, text=True
+                )
+                if result.returncode != 0:
+                    # Something may still have a handle open inside the
+                    # chroot (e.g. a lingering apt/gpg process). Fall back
+                    # to a lazy unmount so cleanup never blocks the build.
+                    subprocess.run(
+                        ["umount", "-l", str(path)], capture_output=True, text=True
+                    )
+            self._pseudo_mounted = False
 
     # ------------------------------------------------------------------
     # APT configuration
@@ -828,13 +863,19 @@ menuentry "{distro} {version} (live, debug)" {{
         try:
             self.prepare_dirs()
             self.run_debootstrap()
-            self.configure_apt()
-            self.pre_chroot_scripts()
-            self.install_packages()
-            self.configure_users()
-            self.configure_system()
-            self.post_install_scripts()
-            self.cleanup_chroot()
+            try:
+                self._mount_pseudo_filesystems()
+                self.configure_apt()
+                self.pre_chroot_scripts()
+                self.install_packages()
+                self.configure_users()
+                self.configure_system()
+                self.post_install_scripts()
+                self.cleanup_chroot()
+            finally:
+                # Must happen before mksquashfs, win or lose, or the host's
+                # real /proc, /sys, /dev get baked into the image.
+                self._unmount_pseudo_filesystems()
             self.export_kernel_and_initrd()
             self.build_squashfs()
             self.write_boot_configs()
