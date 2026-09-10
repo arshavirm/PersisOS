@@ -16,7 +16,10 @@ ALL_CONFIG_PATHS = CONFIG_PATHS + [SERVER_CONFIG_PATH]
 
 
 class ProjectValidationTests(unittest.TestCase):
+
     def test_manifests_load_and_stay_in_sync(self):
+        self.maxDiff = None
+
         manifests = []
         for path in CONFIG_PATHS:
             config = build.load_config(str(path))
