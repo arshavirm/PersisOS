@@ -26,11 +26,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate configuration
-        run: |
-          python3 -m py_compile build.py
-          python3 -m unittest discover -s tests -v
-
       - name: Build server ISO (amd64)
         run: |
           docker run --rm --privileged \

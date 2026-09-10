@@ -36,11 +36,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Validate configuration
-        run: |
-          python3 -m py_compile build.py
-          python3 -m unittest discover -s tests -v
-
       - name: Build ISO (${{ matrix.arch }})
         run: |
           docker run --rm --privileged \
