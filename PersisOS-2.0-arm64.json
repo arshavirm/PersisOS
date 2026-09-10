@@ -85,8 +85,6 @@
         "gdisk",
         "dosfstools",
         "ntfs-3g",
-        "grub-pc",
-        "grub-efi-amd64",
         "os-prober",
         "efibootmgr",
         "cryptsetup",
