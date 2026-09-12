@@ -75,7 +75,6 @@
         "power-profiles-daemon",
         "upower",
         "udisks2",
-        "krunner",
         "plasma-runners-addons",
         "fastfetch",
         "squashfs-tools",
