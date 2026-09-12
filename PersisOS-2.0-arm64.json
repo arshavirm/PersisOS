@@ -83,8 +83,6 @@
         "firmware-brcm80211",
         "firmware-atheros",
         "firmware-mediatek",
-        "intel-microcode",
-        "amd64-microcode",
         "powerdevil",
         "kscreen",
         "live-config-systemd",
