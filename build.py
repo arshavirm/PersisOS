@@ -413,7 +413,7 @@ class LiveBuilder:
 
             env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
             self._chroot(
-                ["apt-get", "install", "-y", "--no-install-recommends"] + pkgs,
+                ["apt-get", "install", "-y"] + pkgs,
                 extra_env=env,
             )
 
