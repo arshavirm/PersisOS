@@ -412,6 +412,18 @@ class LiveBuilder:
                 pkgs += ["grub-pc-bin", "grub2-common"]
 
             env = {**os.environ, "DEBIAN_FRONTEND": "noninteractive"}
+            # Resolve the complete transaction before changing the rootfs. This
+            # turns a late apt failure into an actionable package-list error.
+            try:
+                self._chroot(
+                    ["apt-get", "-s", "--no-remove", "install", "-y"] + pkgs,
+                    extra_env=env,
+                )
+            except BuildError as exc:
+                raise BuildError(
+                    "Calamares/live-image package preflight failed. Check the "
+                    "configured package names and enabled APT components.\n" + str(exc)
+                ) from exc
             self._chroot(
                 ["apt-get", "install", "-y"] + pkgs,
                 extra_env=env,

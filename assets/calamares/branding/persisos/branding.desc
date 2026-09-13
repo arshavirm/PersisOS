@@ -5,7 +5,7 @@ welcomeStyleCalamares: false
 welcomeExpandingLogo:  true
 
 windowExpanding: normal
-windowSize: 800px,520px
+windowSize: 1024px,680px
 windowPlacement: center
 
 sidebar:    widget
@@ -33,7 +33,11 @@ slideshow:    "show.qml"
 slideshowAPI: 2
 
 style:
-    sidebarBackground:    "#bababa" 
-    sidebarText:          "#242424" 
+    sidebarBackground:    "#161b2e"
+    sidebarText:          "#e8ecff"
     sidebarTextSelect:    "#ffffff" 
-    sidebarTextHighlight: "#9963f1"
+    sidebarTextHighlight: "#8b7cf6"
+    widgetBackground:     "#f6f7fb"
+    widgetForeground:     "#1d2340"
+    buttonBackground:     "#6757d9"
+    buttonForeground:     "#ffffff"
